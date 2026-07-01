@@ -372,6 +372,7 @@ let addType = 'meal';
 let photoDataUrl = null;
 let authMode = 'login';
 let historyFilterDate = '';
+let historyFilterPerson = '';
 let dashRange = '7d'; // '7d' | 'all'
 let dashPerson = ''; // '' = all, otherwise a specific name
 let allPosts = [];
@@ -995,23 +996,33 @@ async function submitExercise(){
 
 function renderHistoryPage(){
   const page = document.getElementById('page');
+  if(allEntries.length===0){
+    page.innerHTML = `<div class="empty-state"><span class="ic">🍽️</span>還沒有任何紀錄<br>去「新增紀錄」寫下今天的第一筆吧</div>`;
+    return;
+  }
+  const rosterNames = allUsers.map(u=>u.name).filter(Boolean);
+  const entryNames = allEntries.map(e=>e.name).filter(Boolean);
+  const allNames = [...new Set([...rosterNames, ...entryNames])];
+
+  const personBar = `
+    <div class="person-filter">
+      <button class="chip ${!historyFilterPerson?'active':''}" data-person="">全部</button>
+      ${allNames.map(n=>`<button class="chip ${historyFilterPerson===n?'active':''}" data-person="${esc(n)}" style="${historyFilterPerson===n?`background:${nameColor(n)};border-color:${nameColor(n)}`:''}">${esc(n)}</button>`).join('')}
+    </div>
+  `;
   const filterBar = `
     <div class="history-filter">
       <div class="date-wrap" style="flex:1;"><input type="date" id="historyDate" value="${historyFilterDate}"></div>
       ${historyFilterDate ? `<button id="clearFilter" class="filter-clear">清除</button>` : ''}
     </div>
   `;
-  const filtered = historyFilterDate
-    ? allEntries.filter(e=>e.date===historyFilterDate)
-    : allEntries;
+  let filtered = allEntries;
+  if(historyFilterDate) filtered = filtered.filter(e=>e.date===historyFilterDate);
+  if(historyFilterPerson) filtered = filtered.filter(e=>e.name===historyFilterPerson);
 
-  if(allEntries.length===0){
-    page.innerHTML = `<div class="empty-state"><span class="ic">🍽️</span>還沒有任何紀錄<br>去「新增紀錄」寫下今天的第一筆吧</div>`;
-    return;
-  }
   if(filtered.length===0){
-    page.innerHTML = `<div class="section-title">歷史紀錄</div>` + filterBar +
-      `<div class="empty-state"><span class="ic">📅</span>這天還沒有任何紀錄</div>`;
+    page.innerHTML = `<div class="section-title">歷史紀錄</div>` + personBar + filterBar +
+      `<div class="empty-state"><span class="ic">📅</span>沒有符合條件的紀錄</div>`;
     bindHistoryFilter();
     return;
   }
@@ -1019,7 +1030,7 @@ function renderHistoryPage(){
   const byDate = {};
   filtered.forEach(e=>{ (byDate[e.date] = byDate[e.date]||[]).push(e); });
   const dates = Object.keys(byDate).sort((a,b)=>b.localeCompare(a));
-  page.innerHTML = `<div class="section-title">歷史紀錄</div>` + filterBar + dates.map(date=>`
+  page.innerHTML = `<div class="section-title">歷史紀錄</div>` + personBar + filterBar + dates.map(date=>`
     <div class="day-group">
       <div class="day-label">${formatDate(date)}</div>
       ${byDate[date].map(entryCard).join('')}
@@ -1037,6 +1048,9 @@ function renderHistoryPage(){
       activeTab = 'add';
       renderApp();
     };
+  });
+  page.querySelectorAll('.person-filter .chip').forEach(b=>{
+    b.onclick = ()=>{ historyFilterPerson = b.dataset.person; renderHistoryPage(); };
   });
   bindHistoryFilter();
 }
