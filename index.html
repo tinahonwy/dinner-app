@@ -919,7 +919,7 @@ function renderDashPage(){
     </div>
 
     <div class="bar-block">
-      <h3>平均每餐熱量 <span class="ref-note">┊建議約 600kcal</span></h3>
+      <h3>平均每餐熱量 <span class="ref-note"></span></h3>
       ${names.map(n=>barRow(n, avgMeal(stats[n],'cal'), 'kcal', 900, 600)).join('')}
     </div>
 
