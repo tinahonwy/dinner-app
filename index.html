@@ -84,6 +84,13 @@
   }
   .avatar-preview img{width:100%;height:100%;object-fit:cover;}
   .avatar-edit .btn-ghost{width:auto;padding:6px 4px;}
+  .color-picker{display:flex;flex-wrap:wrap;gap:10px;padding:2px 0;}
+  .color-swatch{
+    width:34px;height:34px;border-radius:50%;border:2px solid transparent;
+    cursor:pointer;padding:0;position:relative;transition:transform .1s;
+  }
+  .color-swatch:active{transform:scale(0.92);}
+  .color-swatch.selected{border-color:var(--ink);box-shadow:0 0 0 2px var(--surface), 0 0 0 4px var(--ink);}
 
   .auth-wrap{min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:32px 24px;max-width:420px;margin:0 auto;}
   .auth-hero{margin-bottom:28px;}
@@ -327,8 +334,10 @@ const db = firebase.firestore();
 const MEAL_TYPES = ["早餐","午餐","晚餐","點心"];
 const EXERCISE_TYPES = ["跑步","重訓","瑜伽","游泳","騎車","快走/散步","球類運動","居家運動","其他"];
 const WATER_QUICK = [200,350,500];
-const PALETTE = ["#D9663F","#3E6259","#C99A3E","#7D5BA6","#3E7CB1","#B5432F"];
+const PALETTE = ["#D9663F","#3E6259","#C99A3E","#7D5BA6","#3E7CB1","#B5432F","#4C8C6B","#B65A82"];
 function nameColor(name){
+  const u = allUsers.find(x=>x.name===name && x.color);
+  if(u) return u.color;
   let h = 0;
   for(let i=0;i<(name||'').length;i++){ h = (h*31 + name.charCodeAt(i)) % 997; }
   return PALETTE[h % PALETTE.length];
@@ -533,6 +542,7 @@ function openProfileModal(){
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
   overlay.id = 'profileModalOverlay';
+  const initialColor = currentProfile.color || nameColor(currentProfile.name);
   overlay.innerHTML = `
     <div class="modal-card">
       <div class="modal-head">
@@ -550,11 +560,18 @@ function openProfileModal(){
         <label>使用者名稱</label>
         <input type="text" id="profileNameInput" value="${esc(currentProfile.name||'')}" maxlength="20">
       </div>
+      <div class="field">
+        <label>代表色</label>
+        <div class="color-picker" id="colorPicker">
+          ${PALETTE.map(c=>`<button type="button" class="color-swatch ${c===initialColor?'selected':''}" data-color="${c}" style="background:${c}"></button>`).join('')}
+        </div>
+      </div>
       <div class="submit-row"><button class="btn btn-primary" id="saveProfileBtn">儲存</button></div>
     </div>
   `;
   document.body.appendChild(overlay);
   let newAvatar = currentProfile.avatar || null;
+  let selectedColor = initialColor;
 
   document.getElementById('closeProfileModal').onclick = ()=>overlay.remove();
   overlay.onclick = (ev)=>{ if(ev.target===overlay) overlay.remove(); };
@@ -582,6 +599,14 @@ function openProfileModal(){
     reader.readAsDataURL(file);
   };
 
+  document.getElementById('colorPicker').querySelectorAll('.color-swatch').forEach(sw=>{
+    sw.onclick = ()=>{
+      selectedColor = sw.dataset.color;
+      document.getElementById('colorPicker').querySelectorAll('.color-swatch').forEach(s=>s.classList.remove('selected'));
+      sw.classList.add('selected');
+    };
+  });
+
   document.getElementById('saveProfileBtn').onclick = async ()=>{
     const btn = document.getElementById('saveProfileBtn');
     const name = document.getElementById('profileNameInput').value.trim();
@@ -589,12 +614,13 @@ function openProfileModal(){
     const nameChanged = name !== currentProfile.name;
     btn.disabled = true; btn.textContent = nameChanged ? '同步舊紀錄中…' : '儲存中…';
     try{
-      await db.collection('users').doc(currentUser.uid).update({ name, avatar: newAvatar || null });
+      await db.collection('users').doc(currentUser.uid).update({ name, avatar: newAvatar || null, color: selectedColor });
       if(nameChanged){
         await syncNameAcrossData(currentUser.uid, name);
       }
       currentProfile.name = name;
       currentProfile.avatar = newAvatar || null;
+      currentProfile.color = selectedColor;
       overlay.remove();
       toast('已更新個人資料 ✨');
       renderApp();
