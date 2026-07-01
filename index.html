@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover">
 <title>一起漂漂亮亮</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans+TC:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -43,7 +43,7 @@
   input,select,textarea{font-family:inherit;}
   a{color:var(--coral-deep);}
 
-  #root{max-width:560px;margin:0 auto;min-height:100vh;position:relative;padding-bottom:84px;}
+  #root{max-width:560px;margin:0 auto;min-height:100vh;position:relative;padding-bottom:calc(84px + env(safe-area-inset-bottom));}
 
   .topbar{display:flex;align-items:baseline;justify-content:space-between;padding:22px 20px 14px;}
   .brand{display:flex;align-items:baseline;gap:8px;}
@@ -73,7 +73,7 @@
   .auth-toggle a{cursor:pointer;font-weight:600;}
   .auth-err{background:#FBEAE5;border:1px solid #EFC3B4;color:var(--err);font-size:13px;padding:10px 12px;border-radius:9px;margin-bottom:14px;line-height:1.5;}
 
-  .tabbar{position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--line);display:flex;justify-content:center;z-index:50;}
+  .tabbar{position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--line);display:flex;justify-content:center;z-index:50;padding-bottom:env(safe-area-inset-bottom);}
   .tabbar-inner{max-width:560px;width:100%;display:flex;}
   .tab{flex:1;padding:12px 4px 10px;background:none;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--ink-soft);font-size:11.5px;font-weight:500;}
   .tab .ic{font-size:19px;}
@@ -109,7 +109,7 @@
   .photo-remove{position:absolute;top:8px;right:8px;background:rgba(43,35,32,.65);color:#fff;border:none;border-radius:50%;width:26px;height:26px;cursor:pointer;font-size:14px;}
 
   .submit-row{margin-top:16px;}
-  .toast{position:fixed;bottom:96px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:30px;font-size:13.5px;box-shadow:var(--shadow);z-index:100;opacity:0;pointer-events:none;transition:opacity .25s, transform .25s;}
+  .toast{position:fixed;bottom:calc(96px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:30px;font-size:13.5px;box-shadow:var(--shadow);z-index:100;opacity:0;pointer-events:none;transition:opacity .25s, transform .25s;}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(-6px);}
 
   .water-quick{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;}
@@ -171,6 +171,13 @@
   .bar-ref{position:absolute;top:-2px;bottom:-2px;width:0;border-left:2px dashed #B0A493;z-index:2;}
   .dash-range{margin-bottom:14px;}
   .dash-range button{padding:9px 4px;font-size:12.5px;}
+  .person-filter{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;}
+  .person-filter .chip{
+    border:1.5px solid var(--line);background:var(--surface);color:var(--ink-soft);
+    padding:7px 14px;border-radius:20px;font-size:12.5px;font-weight:600;cursor:pointer;
+  }
+  .person-filter .chip.active{color:#fff;border-color:transparent;}
+  .person-filter .chip[data-person=""].active{background:var(--ink);}
 
   .plate-row{display:flex;justify-content:center;gap:22px;margin:18px 0 8px;flex-wrap:wrap;}
   .plate{position:relative;width:84px;height:84px;}
@@ -223,6 +230,7 @@ let photoDataUrl = null;
 let authMode = 'login';
 let historyFilterDate = '';
 let dashRange = '7d'; // '7d' | 'all'
+let dashPerson = ''; // '' = all, otherwise a specific name
 
 const root = document.getElementById('root');
 
@@ -696,11 +704,13 @@ function renderDashPage(){
   const page = document.getElementById('page');
   const rosterNames = allUsers.map(u=>u.name).filter(Boolean);
   const entryNames = allEntries.map(e=>e.name).filter(Boolean);
-  const names = [...new Set([...rosterNames, ...entryNames])];
-  if(names.length===0){
+  const allNames = [...new Set([...rosterNames, ...entryNames])];
+  if(allNames.length===0){
     page.innerHTML = `<div class="empty-state"><span class="ic">◎</span>還沒有資料可以統計<br>大家開始記錄後,這裡就會顯示比較圖表</div>`;
     return;
   }
+  if(dashPerson && !allNames.includes(dashPerson)) dashPerson = '';
+  const names = dashPerson ? [dashPerson] : allNames;
 
   let scopedEntries = allEntries;
   if(dashRange==='7d'){
@@ -709,6 +719,7 @@ function renderDashPage(){
     const cutoffStr = cutoff.toISOString().slice(0,10);
     scopedEntries = allEntries.filter(e=>e.date >= cutoffStr);
   }
+  if(dashPerson) scopedEntries = scopedEntries.filter(e=>e.name===dashPerson);
 
   const mealEntries = scopedEntries.filter(e=>(e.type||'meal')==='meal');
   const waterEntries = scopedEntries.filter(e=>e.type==='water');
@@ -743,7 +754,11 @@ function renderDashPage(){
   const gridCols = `repeat(${Math.min(names.length,4)},1fr)`;
 
   page.innerHTML = `
-    <div class="section-title">大家的總覽</div>
+    <div class="section-title">${dashPerson? esc(dashPerson)+' 的總覽' : '大家的總覽'}</div>
+    <div class="person-filter">
+      <button class="chip ${!dashPerson?'active':''}" data-person="">全部</button>
+      ${allNames.map(n=>`<button class="chip ${dashPerson===n?'active':''}" data-person="${esc(n)}" style="${dashPerson===n?`background:${nameColor(n)};border-color:${nameColor(n)}`:''}">${esc(n)}</button>`).join('')}
+    </div>
     <div class="seg dash-range">
       <button class="${dashRange==='7d'?'active':''}" data-range="7d">最近 7 天</button>
       <button class="${dashRange==='all'?'active':''}" data-range="all">全部紀錄</button>
@@ -779,11 +794,14 @@ function renderDashPage(){
       `).join('')}
     </div>
     <div style="text-align:center;font-size:11.5px;color:var(--ink-soft);padding-bottom:6px;">
-      共 ${scopedEntries.length} 筆紀錄(${dashRange==='7d'?'最近 7 天':'全部'}) · 數字會隨新紀錄自動更新
+      共 ${scopedEntries.length} 筆紀錄(${dashRange==='7d'?'最近 7 天':'全部'}${dashPerson? '・'+esc(dashPerson):''}) · 數字會隨新紀錄自動更新
     </div>
   `;
   page.querySelectorAll('.dash-range button').forEach(b=>{
     b.onclick = ()=>{ dashRange = b.dataset.range; renderDashPage(); };
+  });
+  page.querySelectorAll('.person-filter .chip').forEach(b=>{
+    b.onclick = ()=>{ dashPerson = b.dataset.person; renderDashPage(); };
   });
 }
 
