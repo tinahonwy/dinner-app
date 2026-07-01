@@ -53,6 +53,34 @@
   .who{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink-soft);}
   .who .dot{width:8px;height:8px;border-radius:50%;background:var(--teal);}
   .who button{background:none;border:none;color:var(--ink-soft);text-decoration:underline;cursor:pointer;font-size:12px;padding:0;}
+  .profile-trigger{
+    display:flex;align-items:center;gap:8px;background:none;border:none;
+    color:var(--ink-soft);font-size:13px;font-family:inherit;cursor:pointer;padding:0;
+    text-decoration:none !important;
+  }
+  .profile-trigger:hover{color:var(--coral-deep);}
+  .avatar-mini{width:20px;height:20px;border-radius:50%;object-fit:cover;flex-shrink:0;}
+
+  .modal-overlay{
+    position:fixed;inset:0;background:rgba(43,35,32,.45);z-index:200;
+    display:flex;align-items:center;justify-content:center;padding:20px;
+  }
+  .modal-card{
+    background:var(--surface);border-radius:20px;padding:22px;
+    max-width:360px;width:100%;box-shadow:var(--shadow);
+  }
+  .modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+  .modal-head h3{margin:0;font-size:18px;font-weight:600;color:var(--ink);}
+  .modal-close{background:none;border:none;font-size:16px;color:var(--ink-soft);cursor:pointer;padding:2px 6px;}
+  .modal-close:hover{color:var(--coral-deep);}
+  .avatar-edit{display:flex;flex-direction:column;align-items:center;gap:10px;margin-bottom:18px;}
+  .avatar-preview{
+    width:88px;height:88px;border-radius:50%;background:var(--gold-soft);
+    display:flex;align-items:center;justify-content:center;overflow:hidden;
+    font-size:30px;font-weight:700;color:#8A6A1E;font-family:'Fraunces',serif;
+  }
+  .avatar-preview img{width:100%;height:100%;object-fit:cover;}
+  .avatar-edit .btn-ghost{width:auto;padding:6px 4px;}
 
   .auth-wrap{min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:32px 24px;max-width:420px;margin:0 auto;}
   .auth-hero{margin-bottom:28px;}
@@ -228,6 +256,7 @@
   .post-card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px 15px;margin-bottom:12px;box-shadow:var(--shadow);}
   .post-head{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
   .post-avatar{width:36px;height:36px;border-radius:50%;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0;font-family:'Fraunces',serif;}
+  .post-avatar-img{width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0;}
   .post-headtext{flex:1;min-width:0;}
   .post-name{font-size:13.5px;font-weight:600;}
   .post-time{font-size:11px;color:var(--ink-soft);}
@@ -340,9 +369,13 @@ function listenPosts(){
 function listenUsers(){
   if(unsubUsers) unsubUsers();
   unsubUsers = db.collection('users').onSnapshot(snap=>{
-    allUsers = snap.docs.map(d=>d.data());
+    allUsers = snap.docs.map(d=>({uid:d.id, ...d.data()}));
     if(activeTab==='dash') renderApp();
   }, err=>console.error(err));
+}
+function userAvatar(uid){
+  const u = allUsers.find(x=>x.uid===uid);
+  return u && u.avatar ? u.avatar : null;
 }
 
 function listenEntries(){
@@ -438,6 +471,79 @@ async function handleAuthSubmit(){
   btn.disabled = false; btn.textContent = authMode==='login'?'登入':'建立帳號';
 }
 
+function openProfileModal(){
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'profileModalOverlay';
+  overlay.innerHTML = `
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3 class="display">編輯個人資料</h3>
+        <button class="modal-close" id="closeProfileModal">✕</button>
+      </div>
+      <div class="avatar-edit">
+        <div class="avatar-preview" id="avatarPreview">
+          ${currentProfile.avatar ? `<img src="${currentProfile.avatar}">` : `<span>${esc((currentProfile.name||'?').slice(0,1))}</span>`}
+        </div>
+        <button class="btn-ghost" id="chooseAvatarBtn">上傳頭像</button>
+        <input type="file" id="avatarInput" accept="image/*" style="display:none">
+      </div>
+      <div class="field">
+        <label>使用者名稱</label>
+        <input type="text" id="profileNameInput" value="${esc(currentProfile.name||'')}" maxlength="20">
+      </div>
+      <div class="submit-row"><button class="btn btn-primary" id="saveProfileBtn">儲存</button></div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  let newAvatar = currentProfile.avatar || null;
+
+  document.getElementById('closeProfileModal').onclick = ()=>overlay.remove();
+  overlay.onclick = (ev)=>{ if(ev.target===overlay) overlay.remove(); };
+
+  document.getElementById('chooseAvatarBtn').onclick = ()=>document.getElementById('avatarInput').click();
+  document.getElementById('avatarInput').onchange = (e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev)=>{
+      const img = new Image();
+      img.onload = ()=>{
+        const maxW = 320;
+        const scale = Math.min(1, maxW/img.width);
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width*scale;
+        canvas.height = img.height*scale;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img,0,0,canvas.width,canvas.height);
+        newAvatar = canvas.toDataURL('image/jpeg', 0.82);
+        document.getElementById('avatarPreview').innerHTML = `<img src="${newAvatar}">`;
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  document.getElementById('saveProfileBtn').onclick = async ()=>{
+    const btn = document.getElementById('saveProfileBtn');
+    const name = document.getElementById('profileNameInput').value.trim();
+    if(!name){ toast('請輸入名字'); return; }
+    btn.disabled = true; btn.textContent = '儲存中…';
+    try{
+      await db.collection('users').doc(currentUser.uid).update({ name, avatar: newAvatar || null });
+      currentProfile.name = name;
+      currentProfile.avatar = newAvatar || null;
+      overlay.remove();
+      toast('已更新個人資料 ✨');
+      renderApp();
+    }catch(e){
+      console.error(e);
+      toast('更新失敗：'+e.message);
+      btn.disabled = false; btn.textContent = '儲存';
+    }
+  };
+}
+
 function renderApp(){
   root.innerHTML = `
     <div class="topbar">
@@ -449,8 +555,10 @@ function renderApp(){
         </div>
       </div>
       <div class="who">
-        <span class="dot" style="background:${nameColor(currentProfile.name)}"></span>
-        ${esc(currentProfile.name)}
+        <button class="profile-trigger" id="profileBtn">
+          ${currentProfile.avatar ? `<img class="avatar-mini" src="${currentProfile.avatar}">` : `<span class="dot" style="background:${nameColor(currentProfile.name)}"></span>`}
+          ${esc(currentProfile.name)}
+        </button>
         <button id="logoutBtn">登出</button>
       </div>
     </div>
@@ -463,6 +571,7 @@ function renderApp(){
     </div></div>
   `;
   document.getElementById('logoutBtn').onclick = ()=>auth.signOut();
+  document.getElementById('profileBtn').onclick = ()=>openProfileModal();
   document.querySelectorAll('.tab').forEach(b=>{
     b.onclick = ()=>{ activeTab = b.dataset.tab; renderApp(); };
   });
@@ -512,6 +621,7 @@ function renderMealForm(){
       <div class="field compact"><label>內容</label>
         <textarea id="f_dinner" placeholder="吃了什麼？例如：雞胸肉沙拉＋地瓜">${e? esc(e.dinner||'') : ''}</textarea>
       </div>
+      <div class="field compact"><label>價格 (NT$)</label><input type="number" id="f_price" min="0" placeholder="例如 120" value="${e&&e.price?e.price:''}"></div>
       <div class="grid3">
         <div class="field compact"><label>熱量 kcal</label><input type="number" id="f_cal" min="0" value="${e&&e.calories?e.calories:''}"></div>
         <div class="field compact"><label>蛋白質 g</label><input type="number" id="f_protein" min="0" value="${e&&e.protein?e.protein:''}"></div>
@@ -653,6 +763,7 @@ async function submitMeal(){
     dinner,
     calories: num('f_cal'), protein: num('f_protein'), carb: num('f_carb'),
     fat: num('f_fat'), fiber: num('f_fiber'), sugar: num('f_sugar'),
+    price: num('f_price'),
     note: document.getElementById('f_note').value.trim(),
     photo: photoDataUrl || null,
   };
@@ -819,6 +930,7 @@ function entryCard(e){
         <span>蛋白質 <b>${e.protein||0}</b>g</span>
         <span>碳水 <b>${e.carb||0}</b>g</span>
         <span>脂肪 <b>${e.fat||0}</b>g</span>
+        ${e.price ? `<span>💰 <b>NT$${e.price}</b></span>` : ''}
       </div>`;
   } else if(type==='water'){
     thumb = `<div class="entry-thumb empty type-water">💧</div>`;
@@ -872,7 +984,10 @@ function renderDashPage(){
   const names = dashPerson ? [dashPerson] : allNames;
 
   let scopedEntries = allEntries;
-  if(dashRange==='7d'){
+  if(dashRange==='today'){
+    const t = todayStr();
+    scopedEntries = allEntries.filter(e=>e.date === t);
+  } else if(dashRange==='7d'){
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate()-6);
     const cutoffStr = cutoff.toISOString().slice(0,10);
@@ -885,21 +1000,21 @@ function renderDashPage(){
   const exEntries = scopedEntries.filter(e=>e.type==='exercise');
 
   const stats = {};
-  names.forEach(n=>stats[n] = {mealCount:0, cal:0, protein:0, carb:0, fat:0, waterByDate:{}, exmin:0});
+  names.forEach(n=>stats[n] = {mealCount:0, cal:0, protein:0, carb:0, fat:0, cost:0, waterByDate:{}, exmin:0});
 
   mealEntries.forEach(e=>{
-    if(!stats[e.name]) stats[e.name] = {mealCount:0, cal:0, protein:0, carb:0, fat:0, waterByDate:{}, exmin:0};
+    if(!stats[e.name]) stats[e.name] = {mealCount:0, cal:0, protein:0, carb:0, fat:0, cost:0, waterByDate:{}, exmin:0};
     const s = stats[e.name];
     s.mealCount++; s.cal += (e.calories||0); s.protein += (e.protein||0);
-    s.carb += (e.carb||0); s.fat += (e.fat||0);
+    s.carb += (e.carb||0); s.fat += (e.fat||0); s.cost += (e.price||0);
   });
   waterEntries.forEach(e=>{
-    if(!stats[e.name]) stats[e.name] = {mealCount:0, cal:0, protein:0, carb:0, fat:0, waterByDate:{}, exmin:0};
+    if(!stats[e.name]) stats[e.name] = {mealCount:0, cal:0, protein:0, carb:0, fat:0, cost:0, waterByDate:{}, exmin:0};
     const s = stats[e.name];
     s.waterByDate[e.date] = (s.waterByDate[e.date]||0) + (e.water||0);
   });
   exEntries.forEach(e=>{
-    if(!stats[e.name]) stats[e.name] = {mealCount:0, cal:0, protein:0, carb:0, fat:0, waterByDate:{}, exmin:0};
+    if(!stats[e.name]) stats[e.name] = {mealCount:0, cal:0, protein:0, carb:0, fat:0, cost:0, waterByDate:{}, exmin:0};
     stats[e.name].exmin += (e.exerciseMin||0);
   });
 
@@ -911,6 +1026,9 @@ function renderDashPage(){
     return Math.round(total/days.length);
   };
   const gridCols = `repeat(${Math.min(names.length,4)},1fr)`;
+  const rangeLabel = dashRange==='today' ? '今天' : dashRange==='7d' ? '最近 7 天' : '全部';
+  const calMax = Math.max(200, ...names.map(m=>avgMeal(stats[m],'cal')));
+  const costMax = Math.max(100, ...names.map(m=>stats[m].cost));
 
   page.innerHTML = `
     <div class="section-title">${dashPerson? esc(dashPerson)+' 的總覽' : '大家的總覽'}</div>
@@ -919,6 +1037,7 @@ function renderDashPage(){
       ${allNames.map(n=>`<button class="chip ${dashPerson===n?'active':''}" data-person="${esc(n)}" style="${dashPerson===n?`background:${nameColor(n)};border-color:${nameColor(n)}`:''}">${esc(n)}</button>`).join('')}
     </div>
     <div class="seg dash-range">
+      <button class="${dashRange==='today'?'active':''}" data-range="today">今天</button>
       <button class="${dashRange==='7d'?'active':''}" data-range="7d">最近 7 天</button>
       <button class="${dashRange==='all'?'active':''}" data-range="all">全部紀錄</button>
     </div>
@@ -927,13 +1046,18 @@ function renderDashPage(){
     </div>
 
     <div class="bar-block">
-      <h3>平均每餐熱量 <span class="ref-note"></span></h3>
-      ${names.map(n=>barRow(n, avgMeal(stats[n],'cal'), 'kcal', 900, 600)).join('')}
+      <h3>平均每餐熱量</h3>
+      ${names.map(n=>barRow(n, avgMeal(stats[n],'cal'), 'kcal', calMax)).join('')}
     </div>
 
     <div class="bar-block">
       <h3>平均每日喝水量 <span class="ref-note">┊建議約 2000ml</span></h3>
       ${names.map(n=>barRow(n, avgWater(stats[n]), 'ml', 2500, 2000)).join('')}
+    </div>
+
+    <div class="bar-block">
+      <h3>餐費花費</h3>
+      ${names.map(n=>barRow(n, stats[n].cost, ' 元', costMax)).join('')}
     </div>
 
     <div class="bar-block">
@@ -955,7 +1079,7 @@ function renderDashPage(){
       `).join('')}
     </div>
     <div style="text-align:center;font-size:11.5px;color:var(--ink-soft);padding-bottom:6px;">
-      共 ${scopedEntries.length} 筆紀錄(${dashRange==='7d'?'最近 7 天':'全部'}${dashPerson? '・'+esc(dashPerson):''}) · 數字會隨新紀錄自動更新
+      共 ${scopedEntries.length} 筆紀錄(${rangeLabel}${dashPerson? '・'+esc(dashPerson):''}) · 數字會隨新紀錄自動更新
     </div>
   `;
   page.querySelectorAll('.dash-range button').forEach(b=>{
@@ -1125,10 +1249,14 @@ function postCard(p){
   const likes = p.likes || [];
   const liked = currentUser && likes.includes(currentUser.uid);
   const initial = (p.name||'?').slice(0,1);
+  const avatar = userAvatar(p.uid);
+  const avatarHtml = avatar
+    ? `<img class="post-avatar-img" src="${avatar}">`
+    : `<div class="post-avatar" style="background:${nameColor(p.name)}">${esc(initial)}</div>`;
   return `
     <div class="post-card">
       <div class="post-head">
-        <div class="post-avatar" style="background:${nameColor(p.name)}">${esc(initial)}</div>
+        ${avatarHtml}
         <div class="post-headtext">
           <div class="post-name">${esc(p.name)}</div>
           <div class="post-time">${relativeTime(p.createdAt)}</div>
