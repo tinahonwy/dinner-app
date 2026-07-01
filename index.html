@@ -160,12 +160,17 @@
 
   .bar-block{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px 16px 6px;box-shadow:var(--shadow);margin-bottom:14px;}
   .bar-block h3{font-size:14px;margin:0 0 12px;font-weight:600;}
+  .ref-note{font-size:10.5px;color:var(--ink-soft);font-weight:400;text-transform:none;letter-spacing:0;margin-left:4px;}
   .bar-row{margin-bottom:12px;}
   .bar-row .bar-head{display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;}
   .bar-row .bar-head .name{color:var(--ink-soft);font-weight:500;}
   .bar-row .bar-head .val{font-family:'IBM Plex Mono',monospace;font-weight:600;}
-  .bar-track{background:var(--parchment);border-radius:8px;height:10px;overflow:hidden;}
+  .bar-track{background:var(--parchment);border-radius:8px;height:10px;overflow:hidden;position:relative;}
   .bar-fill{height:100%;border-radius:8px;transition:width .6s ease;}
+  .bar-fill.empty{background:repeating-linear-gradient(135deg,var(--line),var(--line) 4px,transparent 4px,transparent 8px) !important;width:100% !important;opacity:.5;}
+  .bar-ref{position:absolute;top:-2px;bottom:-2px;width:0;border-left:2px dashed #B0A493;z-index:2;}
+  .dash-range{margin-bottom:14px;}
+  .dash-range button{padding:9px 4px;font-size:12.5px;}
 
   .plate-row{display:flex;justify-content:center;gap:22px;margin:18px 0 8px;flex-wrap:wrap;}
   .plate{position:relative;width:84px;height:84px;}
@@ -217,6 +222,7 @@ let addType = 'meal';
 let photoDataUrl = null;
 let authMode = 'login';
 let historyFilterDate = '';
+let dashRange = '7d'; // '7d' | 'all'
 
 const root = document.getElementById('root');
 
@@ -696,9 +702,17 @@ function renderDashPage(){
     return;
   }
 
-  const mealEntries = allEntries.filter(e=>(e.type||'meal')==='meal');
-  const waterEntries = allEntries.filter(e=>e.type==='water');
-  const exEntries = allEntries.filter(e=>e.type==='exercise');
+  let scopedEntries = allEntries;
+  if(dashRange==='7d'){
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate()-6);
+    const cutoffStr = cutoff.toISOString().slice(0,10);
+    scopedEntries = allEntries.filter(e=>e.date >= cutoffStr);
+  }
+
+  const mealEntries = scopedEntries.filter(e=>(e.type||'meal')==='meal');
+  const waterEntries = scopedEntries.filter(e=>e.type==='water');
+  const exEntries = scopedEntries.filter(e=>e.type==='exercise');
 
   const stats = {};
   names.forEach(n=>stats[n] = {mealCount:0, cal:0, protein:0, carb:0, fat:0, waterByDate:{}, exmin:0});
@@ -730,18 +744,22 @@ function renderDashPage(){
 
   page.innerHTML = `
     <div class="section-title">大家的總覽</div>
+    <div class="seg dash-range">
+      <button class="${dashRange==='7d'?'active':''}" data-range="7d">最近 7 天</button>
+      <button class="${dashRange==='all'?'active':''}" data-range="all">全部紀錄</button>
+    </div>
     <div class="plate-row">
       ${names.map(n=>plateSvg(n, stats[n])).join('')}
     </div>
 
     <div class="bar-block">
-      <h3>平均每餐熱量</h3>
-      ${names.map(n=>barRow(n, avgMeal(stats[n],'cal'), 'kcal', 900)).join('')}
+      <h3>平均每餐熱量 <span class="ref-note">┊建議約 600kcal</span></h3>
+      ${names.map(n=>barRow(n, avgMeal(stats[n],'cal'), 'kcal', 900, 600)).join('')}
     </div>
 
     <div class="bar-block">
-      <h3>平均每日喝水量</h3>
-      ${names.map(n=>barRow(n, avgWater(stats[n]), 'ml', 2500)).join('')}
+      <h3>平均每日喝水量 <span class="ref-note">┊建議約 2000ml</span></h3>
+      ${names.map(n=>barRow(n, avgWater(stats[n]), 'ml', 2500, 2000)).join('')}
     </div>
 
     <div class="bar-block">
@@ -754,24 +772,32 @@ function renderDashPage(){
       ${names.map(n=>`
         <div class="stat-card">
           <div class="who-name" style="color:${nameColor(n)}">${esc(n)}</div>
-          <div class="big">${avgMeal(stats[n],'protein')}</div><div class="lbl">蛋白質 g</div>
-          <div class="big" style="margin-top:6px;">${avgMeal(stats[n],'carb')}</div><div class="lbl">碳水 g</div>
-          <div class="big" style="margin-top:6px;">${avgMeal(stats[n],'fat')}</div><div class="lbl">脂肪 g</div>
+          <div class="big">${stats[n].mealCount? avgMeal(stats[n],'protein') : '–'}</div><div class="lbl">蛋白質 g</div>
+          <div class="big" style="margin-top:6px;">${stats[n].mealCount? avgMeal(stats[n],'carb') : '–'}</div><div class="lbl">碳水 g</div>
+          <div class="big" style="margin-top:6px;">${stats[n].mealCount? avgMeal(stats[n],'fat') : '–'}</div><div class="lbl">脂肪 g</div>
         </div>
       `).join('')}
     </div>
     <div style="text-align:center;font-size:11.5px;color:var(--ink-soft);padding-bottom:6px;">
-      共 ${allEntries.length} 筆紀錄 · 數字會隨新紀錄自動更新
+      共 ${scopedEntries.length} 筆紀錄(${dashRange==='7d'?'最近 7 天':'全部'}) · 數字會隨新紀錄自動更新
     </div>
   `;
+  page.querySelectorAll('.dash-range button').forEach(b=>{
+    b.onclick = ()=>{ dashRange = b.dataset.range; renderDashPage(); };
+  });
 }
 
-function barRow(name, val, unit, max){
+function barRow(name, val, unit, max, refTarget){
   const pct = max>0 ? Math.min(100, Math.round(val/max*100)) : 0;
+  const refPct = refTarget ? Math.min(100, Math.round(refTarget/max*100)) : null;
+  const hasData = val>0;
   return `
     <div class="bar-row">
-      <div class="bar-head"><span class="name">${esc(name)}</span><span class="val">${val}${unit}</span></div>
-      <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${nameColor(name)}"></div></div>
+      <div class="bar-head"><span class="name">${esc(name)}</span><span class="val">${hasData? val+unit : '– 尚無紀錄'}</span></div>
+      <div class="bar-track">
+        ${refPct!==null ? `<div class="bar-ref" style="left:${refPct}%"></div>` : ''}
+        <div class="bar-fill ${hasData?'':'empty'}" style="width:${pct}%;background:${nameColor(name)}"></div>
+      </div>
     </div>
   `;
 }
