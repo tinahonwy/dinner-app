@@ -185,6 +185,43 @@
   .plate-name{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;font-size:10.5px;color:var(--ink-soft);font-weight:600;}
   .plate-name b{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--ink);font-weight:600;}
 
+  .ex-list{display:flex;flex-direction:column;gap:2px;margin-bottom:10px;}
+  .ex-row{display:flex;align-items:center;gap:9px;padding:9px 2px;border-bottom:1px solid var(--line);font-size:12.5px;}
+  .ex-row:last-child{border-bottom:none;}
+  .ex-date{font-family:'IBM Plex Mono',monospace;color:var(--ink-soft);width:38px;flex-shrink:0;}
+  .ex-type{flex:1;color:var(--ink);}
+  .ex-min{color:var(--gold);font-weight:600;}
+  .ex-empty{color:var(--ink-soft);font-size:12.5px;padding:14px 2px;text-align:center;}
+
+  /* ---------- Board (留言板) ---------- */
+  .board-compose{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:16px;box-shadow:var(--shadow);margin-bottom:18px;}
+  .board-compose-head{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--ink-soft);margin-bottom:10px;}
+  .board-compose-head .dot{width:9px;height:9px;border-radius:50%;}
+  .board-compose textarea{margin-bottom:10px;min-height:64px;}
+  .photo-box.small{padding:10px;margin-bottom:0;}
+  .photo-box.small .placeholder{padding:6px 0;font-size:12.5px;}
+  .photo-box.small .placeholder .ic{font-size:20px;margin-bottom:3px;}
+  .photo-box.small img{max-height:180px;}
+
+  .post-card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px 15px;margin-bottom:12px;box-shadow:var(--shadow);}
+  .post-head{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+  .post-avatar{width:36px;height:36px;border-radius:50%;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0;font-family:'Fraunces',serif;}
+  .post-headtext{flex:1;min-width:0;}
+  .post-name{font-size:13.5px;font-weight:600;}
+  .post-time{font-size:11px;color:var(--ink-soft);}
+  .post-del{background:none;border:none;color:#C7B9AC;font-size:11.5px;cursor:pointer;text-decoration:underline;flex-shrink:0;}
+  .post-del:hover{color:var(--err);}
+  .post-text{font-size:14px;line-height:1.6;margin-bottom:10px;white-space:pre-wrap;word-break:break-word;}
+  .post-photo{width:100%;border-radius:12px;display:block;margin-bottom:10px;max-height:420px;object-fit:cover;}
+  .post-actions{display:flex;}
+  .like-btn{
+    background:var(--parchment);border:1.5px solid transparent;border-radius:20px;
+    padding:7px 14px;font-size:12.5px;font-weight:600;color:var(--ink-soft);cursor:pointer;
+    display:flex;align-items:center;gap:5px;transition:transform .1s;
+  }
+  .like-btn:active{transform:scale(0.96);}
+  .like-btn.liked{background:var(--gold-soft);color:#8A6A1E;border-color:var(--gold);}
+
   .loading{display:flex;align-items:center;justify-content:center;min-height:60vh;color:var(--ink-soft);font-size:14px;}
   .hidden{display:none !important;}
 </style>
@@ -231,6 +268,9 @@ let authMode = 'login';
 let historyFilterDate = '';
 let dashRange = '7d'; // '7d' | 'all'
 let dashPerson = ''; // '' = all, otherwise a specific name
+let allPosts = [];
+let unsubPosts = null;
+let boardPhotoDataUrl = null;
 
 const root = document.getElementById('root');
 
@@ -251,14 +291,28 @@ auth.onAuthStateChanged(async (user)=>{
     }catch(e){ currentProfile = {name:'未命名', email:user.email}; }
     listenEntries();
     listenUsers();
+    listenPosts();
     renderApp();
   } else {
     if(unsubEntries){ unsubEntries(); unsubEntries=null; }
     if(unsubUsers){ unsubUsers(); unsubUsers=null; }
-    allEntries = []; allUsers = [];
+    if(unsubPosts){ unsubPosts(); unsubPosts=null; }
+    allEntries = []; allUsers = []; allPosts = [];
     renderAuth();
   }
 });
+
+function listenPosts(){
+  if(unsubPosts) unsubPosts();
+  unsubPosts = db.collection('posts').orderBy('createdAt','desc').limit(200)
+    .onSnapshot(snap=>{
+      allPosts = snap.docs.map(d=>({id:d.id, ...d.data()}));
+      if(activeTab==='board'){
+        const feedEl = document.getElementById('postFeed');
+        if(feedEl) renderPostFeed(); else renderApp();
+      }
+    }, err=>console.error(err));
+}
 
 function listenUsers(){
   if(unsubUsers) unsubUsers();
@@ -273,7 +327,8 @@ function listenEntries(){
   unsubEntries = db.collection('entries').orderBy('date','desc').limit(400)
     .onSnapshot(snap=>{
       allEntries = snap.docs.map(d=>({id:d.id, ...d.data()}));
-      renderApp();
+      if(activeTab==='history') renderHistoryPage();
+      else if(activeTab==='dash') renderDashPage();
     }, err=>{
       console.error(err);
       toast('讀取資料時發生問題');
@@ -380,6 +435,7 @@ function renderApp(){
     <div class="tabbar"><div class="tabbar-inner">
       <button class="tab ${activeTab==='add'?'active':''}" data-tab="add"><span class="ic">✎</span>新增紀錄</button>
       <button class="tab ${activeTab==='history'?'active':''}" data-tab="history"><span class="ic">📖</span>歷史紀錄</button>
+      <button class="tab ${activeTab==='board'?'active':''}" data-tab="board"><span class="ic">💬</span>留言板</button>
       <button class="tab ${activeTab==='dash'?'active':''}" data-tab="dash"><span class="ic">◎</span>儀表板</button>
     </div></div>
   `;
@@ -389,6 +445,7 @@ function renderApp(){
   });
   if(activeTab==='add') renderAddPage();
   else if(activeTab==='history') renderHistoryPage();
+  else if(activeTab==='board') renderBoardPage();
   else renderDashPage();
 }
 
@@ -645,6 +702,10 @@ function formatDate(d){
   const days = ['週日','週一','週二','週三','週四','週五','週六'];
   return `${dt.getMonth()+1}月${dt.getDate()}日 · ${days[dt.getDay()]}`;
 }
+function formatDateShort(d){
+  const dt = new Date(d+'T00:00:00');
+  return `${dt.getMonth()+1}/${dt.getDate()}`;
+}
 
 function entryCard(e){
   const mine = e.uid === currentUser.uid;
@@ -778,8 +839,17 @@ function renderDashPage(){
     </div>
 
     <div class="bar-block">
-      <h3>累積運動時長</h3>
-      ${names.map(n=>barRow(n, stats[n].exmin, '分鐘', Math.max(60,...names.map(m=>stats[m].exmin)))).join('')}
+      <h3>運動紀錄</h3>
+      ${exEntries.length===0
+        ? `<div class="ex-empty">這段期間還沒有運動紀錄</div>`
+        : `<div class="ex-list">${[...exEntries].sort((a,b)=>b.date.localeCompare(a.date)).map(e=>`
+            <div class="ex-row">
+              <span class="ex-date">${formatDateShort(e.date)}</span>
+              <span class="badge" style="background:${nameColor(e.name)+'22'};color:${nameColor(e.name)}">${esc(e.name)}</span>
+              <span class="ex-type">${esc(e.exercise||'運動')}</span>
+              <span class="ex-min num">${e.exerciseMin||0} 分</span>
+            </div>
+          `).join('')}</div>`}
     </div>
 
     <div class="section-title">平均每餐營養素 (g)</div>
@@ -836,6 +906,169 @@ function plateSvg(name, s){
       <div class="plate-name">${esc(name)}<b>${s.mealCount}餐</b></div>
     </div>
   `;
+}
+
+/* ============ Board page (留言板) ============ */
+function renderBoardPage(){
+  const page = document.getElementById('page');
+  boardPhotoDataUrl = null;
+  page.innerHTML = `
+    <div class="board-compose">
+      <div class="board-compose-head">
+        <span class="dot" style="background:${nameColor(currentProfile.name)}"></span>
+        <span>${esc(currentProfile.name)}</span>
+      </div>
+      <textarea id="post_text" placeholder="說點什麼幫大家打氣吧～（沒有照片也可以）" maxlength="500"></textarea>
+      <div class="photo-box small" id="postPhotoBox">
+        <div class="placeholder"><span class="ic">📷</span>加一張照片（選填）</div>
+      </div>
+      <input type="file" id="post_photo" accept="image/*" capture="environment" style="display:none">
+      <div class="submit-row"><button class="btn btn-primary" id="submitPost">發佈</button></div>
+    </div>
+    <div id="postFeed"></div>
+  `;
+  const photoBox = document.getElementById('postPhotoBox');
+  const fileInput = document.getElementById('post_photo');
+  photoBox.onclick = ()=>fileInput.click();
+  fileInput.onchange = handlePostPhotoSelect;
+  document.getElementById('submitPost').onclick = submitPost;
+  renderPostFeed();
+}
+
+function handlePostPhotoSelect(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev)=>{
+    const img = new Image();
+    img.onload = ()=>{
+      const maxW = 900;
+      const scale = Math.min(1, maxW/img.width);
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width*scale;
+      canvas.height = img.height*scale;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img,0,0,canvas.width,canvas.height);
+      boardPhotoDataUrl = canvas.toDataURL('image/jpeg', 0.65);
+      const box = document.getElementById('postPhotoBox');
+      box.classList.add('has-img');
+      box.innerHTML = `<img src="${boardPhotoDataUrl}"><button class="photo-remove" id="removePostPhoto">✕</button>`;
+      document.getElementById('removePostPhoto').onclick = (ev2)=>{
+        ev2.stopPropagation();
+        boardPhotoDataUrl = null;
+        box.classList.remove('has-img');
+        box.innerHTML = `<div class="placeholder"><span class="ic">📷</span>加一張照片（選填）</div>`;
+      };
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+async function submitPost(){
+  const btn = document.getElementById('submitPost');
+  const text = document.getElementById('post_text').value.trim();
+  if(!text && !boardPhotoDataUrl){ toast('寫點文字或加張照片吧'); return; }
+  btn.disabled = true; btn.textContent = '發佈中…';
+  try{
+    await db.collection('posts').add({
+      uid: currentUser.uid,
+      name: currentProfile.name,
+      text, photo: boardPhotoDataUrl || null,
+      likes: [],
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    toast('已發佈 🎉');
+    document.getElementById('post_text').value = '';
+    boardPhotoDataUrl = null;
+    const box = document.getElementById('postPhotoBox');
+    if(box){
+      box.classList.remove('has-img');
+      box.innerHTML = `<div class="placeholder"><span class="ic">📷</span>加一張照片（選填）</div>`;
+    }
+  }catch(e){
+    console.error(e);
+    toast('發佈失敗：'+e.message);
+  }
+  btn.disabled = false; btn.textContent = '發佈';
+}
+
+function renderPostFeed(){
+  const feed = document.getElementById('postFeed');
+  if(!feed) return;
+  if(allPosts.length===0){
+    feed.innerHTML = `<div class="empty-state"><span class="ic">💬</span>還沒有人留言<br>寫下第一句幫大家打氣的話吧</div>`;
+    return;
+  }
+  feed.innerHTML = allPosts.map(postCard).join('');
+  feed.querySelectorAll('.like-btn').forEach(b=>{
+    b.onclick = ()=>toggleLike(b.dataset.id, b.dataset.liked==='1');
+  });
+  feed.querySelectorAll('.post-del').forEach(b=>{
+    b.onclick = ()=>deletePost(b.dataset.id);
+  });
+}
+
+function postCard(p){
+  const mine = p.uid === currentUser.uid;
+  const likes = p.likes || [];
+  const liked = currentUser && likes.includes(currentUser.uid);
+  const initial = (p.name||'?').slice(0,1);
+  return `
+    <div class="post-card">
+      <div class="post-head">
+        <div class="post-avatar" style="background:${nameColor(p.name)}">${esc(initial)}</div>
+        <div class="post-headtext">
+          <div class="post-name">${esc(p.name)}</div>
+          <div class="post-time">${relativeTime(p.createdAt)}</div>
+        </div>
+        ${mine ? `<button class="post-del" data-id="${p.id}">刪除</button>` : ''}
+      </div>
+      ${p.text ? `<div class="post-text">${esc(p.text)}</div>` : ''}
+      ${p.photo ? `<img class="post-photo" src="${p.photo}">` : ''}
+      <div class="post-actions">
+        <button class="like-btn ${liked?'liked':''}" data-id="${p.id}" data-liked="${liked?'1':'0'}">
+          <span class="ic">${liked?'💪':'🤍'}</span> ${likes.length>0? '幫'+likes.length+'人打氣' : '幫TA打氣'}
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+function relativeTime(ts){
+  if(!ts || !ts.toDate) return '剛剛';
+  const diffMs = Date.now() - ts.toDate().getTime();
+  const min = Math.floor(diffMs/60000);
+  if(min < 1) return '剛剛';
+  if(min < 60) return `${min} 分鐘前`;
+  const hr = Math.floor(min/60);
+  if(hr < 24) return `${hr} 小時前`;
+  const day = Math.floor(hr/24);
+  if(day < 7) return `${day} 天前`;
+  const d = ts.toDate();
+  return `${d.getMonth()+1}/${d.getDate()}`;
+}
+
+async function toggleLike(id, currentlyLiked){
+  try{
+    await db.collection('posts').doc(id).update({
+      likes: currentlyLiked
+        ? firebase.firestore.FieldValue.arrayRemove(currentUser.uid)
+        : firebase.firestore.FieldValue.arrayUnion(currentUser.uid)
+    });
+  }catch(e){
+    toast('操作失敗：'+e.message);
+  }
+}
+
+async function deletePost(id){
+  if(!confirm('確定要刪除這則留言嗎？')) return;
+  try{
+    await db.collection('posts').doc(id).delete();
+    toast('已刪除');
+  }catch(e){
+    toast('刪除失敗：'+e.message);
+  }
 }
 
 root.innerHTML = `<div class="loading">載入中…</div>`;
