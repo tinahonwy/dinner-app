@@ -148,6 +148,18 @@
   .entry-stats b{color:var(--ink);font-family:'IBM Plex Mono',monospace;}
   .entry-actions{display:flex;justify-content:flex-end;margin-top:6px;}
   .del-btn{background:none;border:none;color:#C7B9AC;font-size:11.5px;cursor:pointer;text-decoration:underline;}
+  .edit-btn{background:none;border:none;color:var(--teal);font-size:11.5px;cursor:pointer;text-decoration:underline;margin-right:14px;}
+  .edit-btn:hover{color:var(--coral-deep);}
+  .editing-banner{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    background:var(--gold-soft);color:#8A6A1E;border:1px solid #E4CB8E;
+    border-radius:12px;padding:10px 14px;font-size:13px;font-weight:600;margin-bottom:14px;
+  }
+  .editing-banner button{
+    background:none;border:1.5px solid #8A6A1E;color:#8A6A1E;border-radius:20px;
+    padding:4px 12px;font-size:11.5px;font-weight:600;cursor:pointer;flex-shrink:0;
+  }
+  .seg button[disabled]{opacity:.4;cursor:not-allowed;}
   .del-btn:hover{color:var(--err);}
   .empty-state{text-align:center;color:var(--ink-soft);font-size:13.5px;padding:40px 10px;line-height:1.7;}
   .empty-state .ic{font-size:34px;display:block;margin-bottom:10px;}
@@ -273,6 +285,7 @@ let dashPerson = ''; // '' = all, otherwise a specific name
 let allPosts = [];
 let unsubPosts = null;
 let boardPhotoDataUrl = null;
+let editingEntry = null;
 
 const root = document.getElementById('root');
 
@@ -454,72 +467,89 @@ function renderApp(){
 function renderAddPage(){
   const page = document.getElementById('page');
   page.innerHTML = `
+    ${editingEntry ? `
+      <div class="editing-banner">
+        ✎ 正在編輯這筆紀錄
+        <button id="cancelEdit">取消編輯</button>
+      </div>
+    ` : ''}
     <div class="seg">
-      <button class="${addType==='meal'?'active':''}" data-type="meal"><span class="ic">🍚</span>餐點</button>
-      <button class="${addType==='water'?'active type-water':''}" data-type="water"><span class="ic">💧</span>喝水</button>
-      <button class="${addType==='exercise'?'active type-exercise':''}" data-type="exercise"><span class="ic">🏃</span>運動</button>
+      <button class="${addType==='meal'?'active':''}" data-type="meal" ${editingEntry?'disabled':''}><span class="ic">🍚</span>餐點</button>
+      <button class="${addType==='water'?'active type-water':''}" data-type="water" ${editingEntry?'disabled':''}><span class="ic">💧</span>喝水</button>
+      <button class="${addType==='exercise'?'active type-exercise':''}" data-type="exercise" ${editingEntry?'disabled':''}><span class="ic">🏃</span>運動</button>
     </div>
     <div id="formArea"></div>
   `;
   page.querySelectorAll('.seg button').forEach(b=>{
-    b.onclick = ()=>{ addType=b.dataset.type; renderAddPage(); };
+    b.onclick = ()=>{ if(editingEntry) return; addType=b.dataset.type; renderAddPage(); };
   });
+  const cancelBtn = document.getElementById('cancelEdit');
+  if(cancelBtn) cancelBtn.onclick = ()=>{ editingEntry=null; renderAddPage(); };
   if(addType==='meal') renderMealForm();
   else if(addType==='water') renderWaterForm();
   else renderExerciseForm();
 }
 
 function renderMealForm(){
-  photoDataUrl = null;
+  const e = (editingEntry && editingEntry.type==='meal') ? editingEntry : null;
+  photoDataUrl = e ? (e.photo || null) : null;
   document.getElementById('formArea').innerHTML = `
     <div class="form-card">
       <div class="grid2">
-        <div class="field compact"><label>日期</label><input type="date" id="f_date" value="${todayStr()}"></div>
+        <div class="field compact"><label>日期</label><input type="date" id="f_date" value="${e? e.date : todayStr()}"></div>
         <div class="field compact"><label>餐點類型</label>
-          <select id="f_mealtype">${MEAL_TYPES.map(t=>`<option>${t}</option>`).join('')}</select>
+          <select id="f_mealtype">${MEAL_TYPES.map(t=>`<option ${e && e.mealType===t?'selected':''}>${t}</option>`).join('')}</select>
         </div>
       </div>
       <div class="field compact"><label>內容</label>
-        <textarea id="f_dinner" placeholder="吃了什麼？例如：雞胸肉沙拉＋地瓜"></textarea>
+        <textarea id="f_dinner" placeholder="吃了什麼？例如：雞胸肉沙拉＋地瓜">${e? esc(e.dinner||'') : ''}</textarea>
       </div>
       <div class="grid3">
-        <div class="field compact"><label>熱量 kcal</label><input type="number" id="f_cal" min="0"></div>
-        <div class="field compact"><label>蛋白質 g</label><input type="number" id="f_protein" min="0"></div>
-        <div class="field compact"><label>碳水 g</label><input type="number" id="f_carb" min="0"></div>
+        <div class="field compact"><label>熱量 kcal</label><input type="number" id="f_cal" min="0" value="${e&&e.calories?e.calories:''}"></div>
+        <div class="field compact"><label>蛋白質 g</label><input type="number" id="f_protein" min="0" value="${e&&e.protein?e.protein:''}"></div>
+        <div class="field compact"><label>碳水 g</label><input type="number" id="f_carb" min="0" value="${e&&e.carb?e.carb:''}"></div>
       </div>
       <div class="grid3">
-        <div class="field compact"><label>脂肪 g</label><input type="number" id="f_fat" min="0"></div>
-        <div class="field compact"><label>膳食纖維 g</label><input type="number" id="f_fiber" min="0"></div>
-        <div class="field compact"><label>糖 g</label><input type="number" id="f_sugar" min="0"></div>
+        <div class="field compact"><label>脂肪 g</label><input type="number" id="f_fat" min="0" value="${e&&e.fat?e.fat:''}"></div>
+        <div class="field compact"><label>膳食纖維 g</label><input type="number" id="f_fiber" min="0" value="${e&&e.fiber?e.fiber:''}"></div>
+        <div class="field compact"><label>糖 g</label><input type="number" id="f_sugar" min="0" value="${e&&e.sugar?e.sugar:''}"></div>
       </div>
       <div class="field compact"><label>照片</label>
-        <div class="photo-box" id="photoBox">
-          <div class="placeholder"><span class="ic">📷</span>點一下拍照或選擇照片</div>
+        <div class="photo-box ${photoDataUrl?'has-img':''}" id="photoBox">
+          ${photoDataUrl ? `<img src="${photoDataUrl}"><button class="photo-remove" id="removePhoto">✕</button>` : `<div class="placeholder"><span class="ic">📷</span>點一下拍照或選擇照片</div>`}
         </div>
         <input type="file" id="f_photo" accept="image/*" capture="environment" style="display:none">
       </div>
-      <div class="field compact"><label>備註（選填）</label><input type="text" id="f_note" placeholder="任何想記下的小事"></div>
-      <div class="submit-row"><button class="btn btn-primary" id="submitEntry">儲存這筆紀錄</button></div>
+      <div class="field compact"><label>備註（選填）</label><input type="text" id="f_note" placeholder="任何想記下的小事" value="${e? esc(e.note||'') : ''}"></div>
+      <div class="submit-row"><button class="btn btn-primary" id="submitEntry">${e? '更新這筆紀錄' : '儲存這筆紀錄'}</button></div>
     </div>
   `;
   const photoBox = document.getElementById('photoBox');
   const fileInput = document.getElementById('f_photo');
   photoBox.onclick = ()=>fileInput.click();
   fileInput.onchange = handlePhotoSelect;
+  const removeBtn = document.getElementById('removePhoto');
+  if(removeBtn) removeBtn.onclick = (ev2)=>{
+    ev2.stopPropagation();
+    photoDataUrl = null;
+    photoBox.classList.remove('has-img');
+    photoBox.innerHTML = `<div class="placeholder"><span class="ic">📷</span>點一下拍照或選擇照片</div>`;
+  };
   document.getElementById('submitEntry').onclick = submitMeal;
 }
 
 function renderWaterForm(){
+  const e = (editingEntry && editingEntry.type==='water') ? editingEntry : null;
   document.getElementById('formArea').innerHTML = `
-    <div class="water-quick">
+    ${e ? '' : `<div class="water-quick">
       ${WATER_QUICK.map(v=>`<div class="water-chip" data-amt="${v}"><div class="amt">+${v}</div><div class="u">ml</div></div>`).join('')}
-    </div>
+    </div>`}
     <div class="form-card">
       <div class="grid2">
-        <div class="field compact"><label>日期</label><input type="date" id="w_date" value="${todayStr()}"></div>
-        <div class="field compact"><label>自訂水量 (ml)</label><input type="number" id="w_amt" placeholder="例如 300" min="0"></div>
+        <div class="field compact"><label>日期</label><input type="date" id="w_date" value="${e? e.date : todayStr()}"></div>
+        <div class="field compact"><label>${e?'水量 (ml)':'自訂水量 (ml)'}</label><input type="number" id="w_amt" placeholder="例如 300" min="0" value="${e? e.water : ''}"></div>
       </div>
-      <div class="submit-row"><button class="btn btn-primary" id="submitWaterCustom">記錄這筆喝水</button></div>
+      <div class="submit-row"><button class="btn btn-primary" id="submitWaterCustom">${e?'更新這筆喝水':'記錄這筆喝水'}</button></div>
     </div>
   `;
   document.querySelectorAll('.water-chip').forEach(c=>{
@@ -534,21 +564,27 @@ function renderWaterForm(){
 }
 
 function renderExerciseForm(){
+  const e = (editingEntry && editingEntry.type==='exercise') ? editingEntry : null;
+  let prefType = '', prefDetail = '';
+  if(e && e.exercise){
+    const parts = e.exercise.split('・');
+    prefType = parts[0]; prefDetail = parts[1] || '';
+  }
   document.getElementById('formArea').innerHTML = `
     <div class="form-card">
       <div class="grid2">
-        <div class="field compact"><label>日期</label><input type="date" id="x_date" value="${todayStr()}"></div>
-        <div class="field compact"><label>運動時長 (分鐘)</label><input type="number" id="x_min" min="0" placeholder="30"></div>
+        <div class="field compact"><label>日期</label><input type="date" id="x_date" value="${e? e.date : todayStr()}"></div>
+        <div class="field compact"><label>運動時長 (分鐘)</label><input type="number" id="x_min" min="0" placeholder="30" value="${e? e.exerciseMin : ''}"></div>
       </div>
       <div class="field compact"><label>運動項目</label>
-        <select id="x_type">${EXERCISE_TYPES.map(t=>`<option>${t}</option>`).join('')}</select>
+        <select id="x_type">${EXERCISE_TYPES.map(t=>`<option ${prefType===t?'selected':''}>${t}</option>`).join('')}</select>
       </div>
       <div class="field compact hidden" id="x_detail_wrap">
         <label>請說明是什麼運動</label>
-        <input type="text" id="x_detail" placeholder="例如：羽毛球、皮拉提斯、爬山">
+        <input type="text" id="x_detail" placeholder="例如：羽毛球、皮拉提斯、爬山" value="${esc(prefDetail)}">
       </div>
-      <div class="field compact"><label>備註（選填）</label><input type="text" id="x_note" placeholder="例如：公園慢跑、5公里"></div>
-      <div class="submit-row"><button class="btn btn-primary" id="submitExercise">儲存這筆運動</button></div>
+      <div class="field compact"><label>備註（選填）</label><input type="text" id="x_note" placeholder="例如：公園慢跑、5公里" value="${e? esc(e.note||'') : ''}"></div>
+      <div class="submit-row"><button class="btn btn-primary" id="submitExercise">${e?'更新這筆運動':'儲存這筆運動'}</button></div>
     </div>
   `;
   const typeSel = document.getElementById('x_type');
@@ -598,7 +634,8 @@ async function submitMeal(){
   const date = document.getElementById('f_date').value;
   if(!date){ toast('請選擇日期'); return; }
   if(!dinner){ toast('請填寫內容'); return; }
-  btn.disabled = true; btn.textContent = '儲存中…';
+  const isEdit = editingEntry && editingEntry.type==='meal';
+  btn.disabled = true; btn.textContent = isEdit? '更新中…' : '儲存中…';
   const num = (id)=>{ const v = document.getElementById(id).value; return v===''?0:Number(v); };
   const data = {
     type:'meal',
@@ -610,28 +647,43 @@ async function submitMeal(){
     fat: num('f_fat'), fiber: num('f_fiber'), sugar: num('f_sugar'),
     note: document.getElementById('f_note').value.trim(),
     photo: photoDataUrl || null,
-    createdAt: firebase.firestore.FieldValue.serverTimestamp()
   };
   try{
-    await db.collection('entries').add(data);
-    toast('已儲存 🎉');
+    if(isEdit){
+      await db.collection('entries').doc(editingEntry.id).update(data);
+      toast('已更新 ✨');
+    } else {
+      data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+      await db.collection('entries').add(data);
+      toast('已儲存 🎉');
+    }
+    editingEntry = null;
     activeTab = 'history';
     renderApp();
   }catch(e){
     console.error(e);
     toast('儲存失敗：'+e.message);
-    btn.disabled = false; btn.textContent = '儲存這筆紀錄';
+    btn.disabled = false; btn.textContent = isEdit? '更新這筆紀錄' : '儲存這筆紀錄';
   }
 }
 
 async function submitWater(amt, date){
+  const isEdit = editingEntry && editingEntry.type==='water';
   try{
-    await db.collection('entries').add({
-      type:'water', uid: currentUser.uid, name: currentProfile.name,
-      date, water: amt,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-    toast(`已記錄 +${amt}ml 💧`);
+    if(isEdit){
+      await db.collection('entries').doc(editingEntry.id).update({ date, water: amt });
+      toast('已更新 ✨');
+      editingEntry = null;
+      activeTab = 'history';
+      renderApp();
+    } else {
+      await db.collection('entries').add({
+        type:'water', uid: currentUser.uid, name: currentProfile.name,
+        date, water: amt,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      toast(`已記錄 +${amt}ml 💧`);
+    }
   }catch(e){
     toast('儲存失敗：'+e.message);
   }
@@ -649,22 +701,30 @@ async function submitExercise(){
   const needsDetail = type==='球類運動' || type==='其他';
   if(needsDetail && !detail){ toast('請說明是什麼運動'); return; }
   const exerciseLabel = detail ? `${type}・${detail}` : type;
-  btn.disabled = true; btn.textContent = '儲存中…';
+  const isEdit = editingEntry && editingEntry.type==='exercise';
+  btn.disabled = true; btn.textContent = isEdit? '更新中…' : '儲存中…';
+  const data = {
+    type:'exercise', uid: currentUser.uid, name: currentProfile.name,
+    date, exercise: exerciseLabel,
+    exerciseMin: min,
+    note: document.getElementById('x_note').value.trim(),
+  };
   try{
-    await db.collection('entries').add({
-      type:'exercise', uid: currentUser.uid, name: currentProfile.name,
-      date, exercise: exerciseLabel,
-      exerciseMin: min,
-      note: document.getElementById('x_note').value.trim(),
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-    toast('已儲存這筆運動 🏃');
+    if(isEdit){
+      await db.collection('entries').doc(editingEntry.id).update(data);
+      toast('已更新 ✨');
+    } else {
+      data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+      await db.collection('entries').add(data);
+      toast('已儲存這筆運動 🏃');
+    }
+    editingEntry = null;
     activeTab = 'history';
     renderApp();
   }catch(e){
     console.error(e);
     toast('儲存失敗：'+e.message);
-    btn.disabled = false; btn.textContent = '儲存這筆運動';
+    btn.disabled = false; btn.textContent = isEdit? '更新這筆運動' : '儲存這筆運動';
   }
 }
 
@@ -702,6 +762,16 @@ function renderHistoryPage(){
   `).join('');
   page.querySelectorAll('.del-btn').forEach(b=>{
     b.onclick = ()=>deleteEntry(b.dataset.id);
+  });
+  page.querySelectorAll('.edit-btn').forEach(b=>{
+    b.onclick = ()=>{
+      const entry = allEntries.find(x=>x.id===b.dataset.id);
+      if(!entry) return;
+      editingEntry = entry;
+      addType = entry.type || 'meal';
+      activeTab = 'add';
+      renderApp();
+    };
   });
   bindHistoryFilter();
 }
@@ -765,7 +835,7 @@ function entryCard(e){
         ${title}
         ${stats}
         ${e.note ? `<div style="font-size:12px;color:var(--ink-soft);margin-top:6px;">${esc(e.note)}</div>` : ''}
-        ${mine ? `<div class="entry-actions"><button class="del-btn" data-id="${e.id}">刪除</button></div>` : ''}
+        ${mine ? `<div class="entry-actions"><button class="edit-btn" data-id="${e.id}">編輯</button><button class="del-btn" data-id="${e.id}">刪除</button></div>` : ''}
       </div>
     </div>
   `;
