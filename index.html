@@ -100,6 +100,7 @@
   .auth-toggle{text-align:center;margin-top:16px;font-size:13.5px;color:var(--ink-soft);}
   .auth-toggle a{cursor:pointer;font-weight:600;}
   .auth-err{background:#FBEAE5;border:1px solid #EFC3B4;color:var(--err);font-size:13px;padding:10px 12px;border-radius:9px;margin-bottom:14px;line-height:1.5;}
+  .auth-ok{background:var(--teal-soft);border:1px solid #B7CFC5;color:var(--teal);font-size:13px;padding:10px 12px;border-radius:9px;margin-bottom:14px;line-height:1.5;}
 
   .tabbar{position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--line);display:flex;justify-content:center;z-index:50;padding-bottom:env(safe-area-inset-bottom);}
   .tabbar-inner{max-width:560px;width:100%;display:flex;}
@@ -420,6 +421,7 @@ function listenEntries(){
 }
 
 function renderAuth(){
+  const isReset = authMode==='reset';
   root.innerHTML = `
     <div class="auth-wrap">
       <div class="auth-hero">
@@ -429,7 +431,8 @@ function renderAuth(){
       </div>
       <div class="card">
         <div id="authError"></div>
-        <div id="registerFields" class="${authMode==='login'?'hidden':''}">
+        ${isReset ? `<p style="font-size:13px;color:var(--ink-soft);margin:0 0 16px;line-height:1.6;">輸入註冊時用的 Email,我們會寄一封重設密碼的信給你。</p>` : ''}
+        <div id="registerFields" class="${authMode==='register'?'':'hidden'}">
           <div class="field">
             <label>你是誰？</label>
             <input type="text" id="regName" placeholder="輸入你的名字或暱稱" maxlength="20">
@@ -439,14 +442,14 @@ function renderAuth(){
           <label>Email</label>
           <input type="email" id="authEmail" placeholder="you@example.com" autocomplete="email">
         </div>
-        <div class="field">
+        <div class="field ${isReset?'hidden':''}">
           <label>密碼</label>
           <input type="password" id="authPass" placeholder="至少 6 個字元" autocomplete="current-password">
         </div>
-        <button class="btn btn-primary" id="authSubmit">${authMode==='login'?'登入':'建立帳號'}</button>
+        <button class="btn btn-primary" id="authSubmit">${authMode==='login'?'登入':authMode==='register'?'建立帳號':'寄送重設密碼信'}</button>
         <div class="auth-toggle">
           ${authMode==='login'
-            ? `還沒有帳號？<a id="toRegister">建立一個</a>`
+            ? `還沒有帳號？<a id="toRegister">建立一個</a> ・ <a id="toReset">忘記密碼？</a>`
             : `已經有帳號了？<a id="toLogin">直接登入</a>`}
         </div>
       </div>
@@ -457,18 +460,42 @@ function renderAuth(){
   if(tr) tr.onclick = ()=>{authMode='register'; renderAuth();};
   const tl = document.getElementById('toLogin');
   if(tl) tl.onclick = ()=>{authMode='login'; renderAuth();};
+  const trs = document.getElementById('toReset');
+  if(trs) trs.onclick = ()=>{authMode='reset'; renderAuth();};
 }
 
 async function handleAuthSubmit(){
   const email = document.getElementById('authEmail').value.trim();
-  const pass = document.getElementById('authPass').value;
   const errBox = document.getElementById('authError');
   errBox.innerHTML = '';
+  const btn = document.getElementById('authSubmit');
+  const btnLabel = authMode==='login'?'登入':authMode==='register'?'建立帳號':'寄送重設密碼信';
+
+  if(authMode==='reset'){
+    if(!email){ errBox.innerHTML = `<div class="auth-err">請輸入 Email</div>`; return; }
+    btn.disabled = true; btn.textContent = '寄送中…';
+    try{
+      await auth.sendPasswordResetEmail(email);
+      errBox.innerHTML = `<div class="auth-ok">已寄出重設密碼信,請到 ${esc(email)} 收信(記得看一下垃圾郵件匣)。</div>`;
+      btn.textContent = '已寄出 ✓';
+      setTimeout(()=>{ authMode='login'; renderAuth(); }, 2500);
+      return;
+    }catch(e){
+      const msgMap = {
+        'auth/invalid-email':'Email 格式不正確',
+        'auth/user-not-found':'找不到這個 Email 的帳號',
+      };
+      errBox.innerHTML = `<div class="auth-err">${msgMap[e.code] || ('發生錯誤：'+e.message)}</div>`;
+      btn.disabled = false; btn.textContent = btnLabel;
+      return;
+    }
+  }
+
+  const pass = document.getElementById('authPass').value;
   if(!email || !pass){
     errBox.innerHTML = `<div class="auth-err">請輸入 Email 和密碼</div>`;
     return;
   }
-  const btn = document.getElementById('authSubmit');
   btn.disabled = true; btn.textContent = '處理中…';
   try{
     if(authMode==='login'){
@@ -477,7 +504,7 @@ async function handleAuthSubmit(){
       const name = document.getElementById('regName').value.trim();
       if(!name){
         errBox.innerHTML = `<div class="auth-err">請輸入你的名字或暱稱</div>`;
-        btn.disabled = false; btn.textContent = authMode==='login'?'登入':'建立帳號';
+        btn.disabled = false; btn.textContent = btnLabel;
         return;
       }
       const cred = await auth.createUserWithEmailAndPassword(email, pass);
@@ -496,7 +523,7 @@ async function handleAuthSubmit(){
     };
     errBox.innerHTML = `<div class="auth-err">${msgMap[e.code] || ('發生錯誤：'+e.message)}</div>`;
   }
-  btn.disabled = false; btn.textContent = authMode==='login'?'登入':'建立帳號';
+  btn.disabled = false; btn.textContent = btnLabel;
 }
 
 function openProfileModal(){
