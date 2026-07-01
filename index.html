@@ -1049,9 +1049,6 @@ function renderHistoryPage(){
       renderApp();
     };
   });
-  page.querySelectorAll('.person-filter .chip').forEach(b=>{
-    b.onclick = ()=>{ historyFilterPerson = b.dataset.person; renderHistoryPage(); };
-  });
   bindHistoryFilter();
 }
 
@@ -1064,6 +1061,9 @@ function bindHistoryFilter(){
   if(clearBtn){
     clearBtn.onclick = ()=>{ historyFilterDate=''; renderHistoryPage(); };
   }
+  document.querySelectorAll('.person-filter .chip').forEach(b=>{
+    b.onclick = ()=>{ historyFilterPerson = b.dataset.person; renderHistoryPage(); };
+  });
 }
 
 function formatDate(d){
