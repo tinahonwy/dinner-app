@@ -265,7 +265,31 @@
   .post-del:hover{color:var(--err);}
   .post-text{font-size:14px;line-height:1.6;margin-bottom:10px;white-space:pre-wrap;word-break:break-word;}
   .post-photo{width:100%;border-radius:12px;display:block;margin-bottom:10px;max-height:420px;object-fit:cover;}
-  .post-actions{display:flex;}
+  .post-actions{display:flex;gap:8px;}
+  .comment-toggle-btn{
+    background:var(--parchment);border:1.5px solid transparent;border-radius:20px;
+    padding:7px 14px;font-size:12.5px;font-weight:600;color:var(--ink-soft);cursor:pointer;
+    display:flex;align-items:center;gap:5px;transition:transform .1s;
+  }
+  .comment-toggle-btn:active{transform:scale(0.96);}
+  .comments-section{margin-top:12px;padding-top:12px;border-top:1px solid var(--line);}
+  .comments-list{display:flex;flex-direction:column;gap:8px;margin-bottom:10px;}
+  .comments-loading, .comments-empty{font-size:12px;color:var(--ink-soft);text-align:center;padding:6px 0;}
+  .comment-row{display:flex;align-items:baseline;gap:7px;font-size:13px;line-height:1.5;}
+  .comment-name{font-weight:600;flex-shrink:0;}
+  .comment-text{flex:1;color:var(--ink);word-break:break-word;}
+  .comment-del{background:none;border:none;color:#C7B9AC;font-size:11px;cursor:pointer;flex-shrink:0;}
+  .comment-del:hover{color:var(--err);}
+  .comment-compose{display:flex;gap:8px;}
+  .comment-input{
+    flex:1;padding:9px 12px;border-radius:20px;border:1.5px solid var(--line);
+    background:#fff;font-size:13px;color:var(--ink);min-width:0;
+  }
+  .comment-input:focus{outline:none;border-color:var(--coral);}
+  .comment-send{
+    background:var(--coral);color:#fff;border:none;border-radius:20px;
+    padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;flex-shrink:0;
+  }
   .like-btn{
     background:var(--parchment);border:1.5px solid transparent;border-radius:20px;
     padding:7px 14px;font-size:12.5px;font-weight:600;color:var(--ink-soft);cursor:pointer;
@@ -324,6 +348,9 @@ let allPosts = [];
 let unsubPosts = null;
 let boardPhotoDataUrl = null;
 let editingEntry = null;
+let expandedComments = {};
+let commentsCache = {};
+let commentUnsubs = {};
 
 const root = document.getElementById('root');
 
@@ -1247,6 +1274,15 @@ function renderPostFeed(){
   feed.querySelectorAll('.post-del').forEach(b=>{
     b.onclick = ()=>deletePost(b.dataset.id);
   });
+  feed.querySelectorAll('.comment-toggle-btn').forEach(b=>{
+    b.onclick = ()=>toggleComments(b.dataset.id);
+  });
+  allPosts.forEach(p=>{
+    if(expandedComments[p.id]){
+      const el = document.getElementById('comments-'+p.id);
+      if(el) bindCommentsSectionEvents(p.id, el);
+    }
+  });
 }
 
 function postCard(p){
@@ -1258,6 +1294,7 @@ function postCard(p){
   const avatarHtml = avatar
     ? `<img class="post-avatar-img" src="${avatar}">`
     : `<div class="post-avatar" style="background:${nameColor(p.name)}">${esc(initial)}</div>`;
+  const cCount = p.commentCount || 0;
   return `
     <div class="post-card">
       <div class="post-head">
@@ -1274,9 +1311,107 @@ function postCard(p){
         <button class="like-btn ${liked?'liked':''}" data-id="${p.id}" data-liked="${liked?'1':'0'}">
           <span class="ic">${liked?'💪':'🤍'}</span> ${likes.length>0? '幫'+likes.length+'人打氣' : '幫TA打氣'}
         </button>
+        <button class="comment-toggle-btn" data-id="${p.id}">
+          <span class="ic">💬</span> ${cCount>0? cCount+' 則留言' : '留言'}
+        </button>
       </div>
+      ${expandedComments[p.id] ? `<div class="comments-section" id="comments-${p.id}">${renderCommentsInner(p.id)}</div>` : ''}
     </div>
   `;
+}
+
+function renderCommentsInner(postId){
+  const list = commentsCache[postId];
+  const listHtml = !list
+    ? `<div class="comments-loading">載入留言中…</div>`
+    : list.length===0
+      ? `<div class="comments-empty">還沒有留言,第一個留言吧</div>`
+      : list.map(c=>commentRow(postId,c)).join('');
+  return `
+    <div class="comments-list">${listHtml}</div>
+    <div class="comment-compose">
+      <input type="text" class="comment-input" data-post="${postId}" placeholder="留言幫大家打氣…" maxlength="200">
+      <button class="comment-send" data-post="${postId}">送出</button>
+    </div>
+  `;
+}
+
+function commentRow(postId, c){
+  const mine = c.uid === currentUser.uid;
+  return `
+    <div class="comment-row">
+      <span class="comment-name" style="color:${nameColor(c.name)}">${esc(c.name)}</span>
+      <span class="comment-text">${esc(c.text)}</span>
+      ${mine ? `<button class="comment-del" data-post="${postId}" data-id="${c.id}">✕</button>` : ''}
+    </div>
+  `;
+}
+
+function bindCommentsSectionEvents(postId, el){
+  const sendBtn = el.querySelector('.comment-send');
+  const input = el.querySelector('.comment-input');
+  if(sendBtn) sendBtn.onclick = ()=>submitComment(postId, input);
+  if(input) input.onkeydown = (ev)=>{ if(ev.key==='Enter') submitComment(postId, input); };
+  el.querySelectorAll('.comment-del').forEach(b=>{
+    b.onclick = ()=>deleteComment(b.dataset.post, b.dataset.id);
+  });
+}
+
+function toggleComments(postId){
+  if(expandedComments[postId]){
+    expandedComments[postId] = false;
+    if(commentUnsubs[postId]){ commentUnsubs[postId](); delete commentUnsubs[postId]; }
+  } else {
+    expandedComments[postId] = true;
+    listenComments(postId);
+  }
+  renderPostFeed();
+}
+
+function listenComments(postId){
+  if(commentUnsubs[postId]) return;
+  commentUnsubs[postId] = db.collection('posts').doc(postId).collection('comments')
+    .orderBy('createdAt','asc').limit(300)
+    .onSnapshot(snap=>{
+      commentsCache[postId] = snap.docs.map(d=>({id:d.id, ...d.data()}));
+      const el = document.getElementById('comments-'+postId);
+      if(el){
+        el.innerHTML = renderCommentsInner(postId);
+        bindCommentsSectionEvents(postId, el);
+      }
+    }, err=>console.error(err));
+}
+
+async function submitComment(postId, input){
+  const text = input.value.trim();
+  if(!text) return;
+  input.disabled = true;
+  try{
+    await db.collection('posts').doc(postId).collection('comments').add({
+      uid: currentUser.uid, name: currentProfile.name, text,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    await db.collection('posts').doc(postId).update({
+      commentCount: firebase.firestore.FieldValue.increment(1)
+    });
+    input.value = '';
+  }catch(e){
+    toast('留言失敗：'+e.message);
+  }
+  input.disabled = false;
+  input.focus();
+}
+
+async function deleteComment(postId, commentId){
+  if(!confirm('確定要刪除這則留言嗎？')) return;
+  try{
+    await db.collection('posts').doc(postId).collection('comments').doc(commentId).delete();
+    await db.collection('posts').doc(postId).update({
+      commentCount: firebase.firestore.FieldValue.increment(-1)
+    });
+  }catch(e){
+    toast('刪除失敗：'+e.message);
+  }
 }
 
 function relativeTime(ts){
@@ -1308,6 +1443,7 @@ async function toggleLike(id, currentlyLiked){
 async function deletePost(id){
   if(!confirm('確定要刪除這則留言嗎？')) return;
   try{
+    if(commentUnsubs[id]){ commentUnsubs[id](); delete commentUnsubs[id]; }
     await db.collection('posts').doc(id).delete();
     toast('已刪除');
   }catch(e){
