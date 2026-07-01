@@ -524,7 +524,7 @@ function renderMealForm(){
         <div class="photo-box ${photoDataUrl?'has-img':''}" id="photoBox">
           ${photoDataUrl ? `<img src="${photoDataUrl}"><button class="photo-remove" id="removePhoto">✕</button>` : `<div class="placeholder"><span class="ic">📷</span>點一下拍照或選擇照片</div>`}
         </div>
-        <input type="file" id="f_photo" accept="image/*" capture="environment" style="display:none">
+        <input type="file" id="f_photo" accept="image/*" style="display:none">
       </div>
       <div class="field compact"><label>備註（選填）</label><input type="text" id="f_note" placeholder="任何想記下的小事" value="${e? esc(e.note||'') : ''}"></div>
       <div class="submit-row"><button class="btn btn-primary" id="submitEntry">${e? '更新這筆紀錄' : '儲存這筆紀錄'}</button></div>
@@ -1031,7 +1031,7 @@ function renderBoardPage(){
       <div class="photo-box small" id="postPhotoBox">
         <div class="placeholder"><span class="ic">📷</span>加一張照片（選填）</div>
       </div>
-      <input type="file" id="post_photo" accept="image/*" capture="environment" style="display:none">
+      <input type="file" id="post_photo" accept="image/*" style="display:none">
       <div class="submit-row"><button class="btn btn-primary" id="submitPost">發佈</button></div>
     </div>
     <div id="postFeed"></div>
