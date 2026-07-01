@@ -20,6 +20,8 @@
     --coral-deep:#B94F2E;
     --teal:#3E6259;
     --teal-soft:#DCE7E1;
+    --blue:#3E7CB1;
+    --blue-soft:#DCE9F2;
     --gold:#C99A3E;
     --gold-soft:#F3E6C4;
     --err:#B5432F;
@@ -41,144 +43,106 @@
   input,select,textarea{font-family:inherit;}
   a{color:var(--coral-deep);}
 
-  /* ---------- App shell ---------- */
   #root{max-width:560px;margin:0 auto;min-height:100vh;position:relative;padding-bottom:84px;}
 
-  /* ---------- Top bar ---------- */
-  .topbar{
-    display:flex;align-items:baseline;justify-content:space-between;
-    padding:22px 20px 14px;
-  }
+  .topbar{display:flex;align-items:baseline;justify-content:space-between;padding:22px 20px 14px;}
   .brand{display:flex;align-items:baseline;gap:8px;}
   .brand .mark{font-size:26px;}
   .brand h1{font-size:21px;font-weight:600;margin:0;letter-spacing:.2px;}
   .brand .tag{font-size:11px;color:var(--ink-soft);letter-spacing:.4px;}
-  .who{
-    display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink-soft);
-  }
+  .who{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink-soft);}
   .who .dot{width:8px;height:8px;border-radius:50%;background:var(--teal);}
-  .who button{
-    background:none;border:none;color:var(--ink-soft);text-decoration:underline;
-    cursor:pointer;font-size:12px;padding:0;
-  }
+  .who button{background:none;border:none;color:var(--ink-soft);text-decoration:underline;cursor:pointer;font-size:12px;padding:0;}
 
-  /* ---------- Auth screen ---------- */
-  .auth-wrap{
-    min-height:100vh;display:flex;flex-direction:column;justify-content:center;
-    padding:32px 24px;max-width:420px;margin:0 auto;
-  }
+  .auth-wrap{min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:32px 24px;max-width:420px;margin:0 auto;}
   .auth-hero{margin-bottom:28px;}
-  .auth-hero .eyebrow{
-    font-size:12px;letter-spacing:2px;color:var(--coral-deep);font-weight:600;
-    text-transform:uppercase;margin-bottom:10px;
-  }
+  .auth-hero .eyebrow{font-size:12px;letter-spacing:2px;color:var(--coral-deep);font-weight:600;text-transform:uppercase;margin-bottom:10px;}
   .auth-hero h1{font-size:34px;line-height:1.15;margin:0 0 8px;font-weight:600;}
   .auth-hero p{color:var(--ink-soft);font-size:14.5px;line-height:1.6;margin:0;}
-  .card{
-    background:var(--surface);border:1px solid var(--line);border-radius:18px;
-    padding:22px;box-shadow:var(--shadow);
-  }
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:22px;box-shadow:var(--shadow);}
   .field{margin-bottom:14px;}
-  .field label{
-    display:block;font-size:12.5px;color:var(--ink-soft);margin-bottom:6px;font-weight:500;
-  }
-  .field input, .field select{
-    width:100%;padding:12px 13px;border-radius:10px;border:1.5px solid var(--line);
-    background:#fff;font-size:15px;color:var(--ink);transition:border-color .15s;
-  }
+  .field label{display:block;font-size:12.5px;color:var(--ink-soft);margin-bottom:6px;font-weight:500;}
+  .field input, .field select{width:100%;padding:12px 13px;border-radius:10px;border:1.5px solid var(--line);background:#fff;font-size:15px;color:var(--ink);transition:border-color .15s;}
   .field input:focus, .field select:focus{outline:none;border-color:var(--coral);}
-  .btn{
-    width:100%;padding:13px;border-radius:10px;border:none;font-size:15px;font-weight:600;
-    cursor:pointer;transition:transform .1s, opacity .15s;
-  }
+  .btn{width:100%;padding:13px;border-radius:10px;border:none;font-size:15px;font-weight:600;cursor:pointer;transition:transform .1s, opacity .15s;}
   .btn:active{transform:scale(0.98);}
   .btn-primary{background:var(--coral);color:#fff;}
   .btn-primary:hover{background:var(--coral-deep);}
   .btn-ghost{background:transparent;color:var(--ink-soft);text-decoration:underline;padding:8px;font-weight:500;font-size:13.5px;}
   .auth-toggle{text-align:center;margin-top:16px;font-size:13.5px;color:var(--ink-soft);}
   .auth-toggle a{cursor:pointer;font-weight:600;}
-  .auth-err{
-    background:#FBEAE5;border:1px solid #EFC3B4;color:var(--err);font-size:13px;
-    padding:10px 12px;border-radius:9px;margin-bottom:14px;line-height:1.5;
-  }
+  .auth-err{background:#FBEAE5;border:1px solid #EFC3B4;color:var(--err);font-size:13px;padding:10px 12px;border-radius:9px;margin-bottom:14px;line-height:1.5;}
 
-  /* ---------- Tabs ---------- */
-  .tabbar{
-    position:fixed;bottom:0;left:0;right:0;background:var(--surface);
-    border-top:1px solid var(--line);display:flex;justify-content:center;z-index:50;
-  }
+  .tabbar{position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--line);display:flex;justify-content:center;z-index:50;}
   .tabbar-inner{max-width:560px;width:100%;display:flex;}
-  .tab{
-    flex:1;padding:12px 4px 10px;background:none;border:none;cursor:pointer;
-    display:flex;flex-direction:column;align-items:center;gap:3px;
-    color:var(--ink-soft);font-size:11.5px;font-weight:500;
-  }
+  .tab{flex:1;padding:12px 4px 10px;background:none;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--ink-soft);font-size:11.5px;font-weight:500;}
   .tab .ic{font-size:19px;}
   .tab.active{color:var(--coral-deep);}
 
   .page{padding:6px 20px 20px;animation:fade .25s ease;}
   @keyframes fade{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:none;}}
 
-  .section-title{
-    font-size:12px;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink-soft);
-    font-weight:600;margin:22px 0 10px;
-  }
+  .section-title{font-size:12px;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink-soft);font-weight:600;margin:22px 0 10px;}
   .section-title:first-child{margin-top:4px;}
 
-  /* ---------- Entry form ---------- */
+  .seg{display:flex;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:4px;margin-bottom:16px;box-shadow:var(--shadow);}
+  .seg button{flex:1;border:none;background:none;padding:10px 4px;border-radius:10px;font-size:13.5px;font-weight:600;color:var(--ink-soft);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;}
+  .seg button .ic{font-size:17px;}
+  .seg button.active{background:var(--coral);color:#fff;}
+  .seg button.active.type-water{background:var(--blue);}
+  .seg button.active.type-exercise{background:var(--gold);}
+
   .form-card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:18px;box-shadow:var(--shadow);}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
   .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
   .field.compact{margin-bottom:12px;}
   .field.compact label{font-size:11.5px;}
   .field.compact input, .field.compact select{padding:10px 11px;font-size:14px;}
-  textarea{
-    width:100%;padding:12px 13px;border-radius:10px;border:1.5px solid var(--line);
-    background:#fff;font-size:15px;color:var(--ink);resize:vertical;min-height:52px;
-  }
+  textarea{width:100%;padding:12px 13px;border-radius:10px;border:1.5px solid var(--line);background:#fff;font-size:15px;color:var(--ink);resize:vertical;min-height:52px;}
   textarea:focus{outline:none;border-color:var(--coral);}
 
-  .photo-box{
-    border:1.5px dashed var(--line);border-radius:14px;padding:14px;text-align:center;
-    cursor:pointer;background:#FFFCF7;position:relative;overflow:hidden;
-  }
+  .photo-box{border:1.5px dashed var(--line);border-radius:14px;padding:14px;text-align:center;cursor:pointer;background:#FFFCF7;position:relative;overflow:hidden;}
   .photo-box.has-img{border-style:solid;padding:0;}
   .photo-box img{width:100%;max-height:220px;object-fit:cover;display:block;border-radius:12px;}
   .photo-box .placeholder{color:var(--ink-soft);font-size:13px;padding:16px 0;}
   .photo-box .placeholder .ic{font-size:26px;display:block;margin-bottom:6px;}
-  .photo-remove{
-    position:absolute;top:8px;right:8px;background:rgba(43,35,32,.65);color:#fff;
-    border:none;border-radius:50%;width:26px;height:26px;cursor:pointer;font-size:14px;
-  }
+  .photo-remove{position:absolute;top:8px;right:8px;background:rgba(43,35,32,.65);color:#fff;border:none;border-radius:50%;width:26px;height:26px;cursor:pointer;font-size:14px;}
 
   .submit-row{margin-top:16px;}
-  .toast{
-    position:fixed;bottom:96px;left:50%;transform:translateX(-50%);
-    background:var(--ink);color:#fff;padding:10px 18px;border-radius:30px;font-size:13.5px;
-    box-shadow:var(--shadow);z-index:100;opacity:0;pointer-events:none;transition:opacity .25s, transform .25s;
-  }
+  .toast{position:fixed;bottom:96px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:30px;font-size:13.5px;box-shadow:var(--shadow);z-index:100;opacity:0;pointer-events:none;transition:opacity .25s, transform .25s;}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(-6px);}
 
-  /* ---------- History list ---------- */
+  .water-quick{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;}
+  .water-chip{background:var(--blue-soft);border:1.5px solid transparent;border-radius:14px;padding:16px 6px;text-align:center;cursor:pointer;transition:transform .1s;}
+  .water-chip:active{transform:scale(0.96);}
+  .water-chip .amt{font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:600;color:var(--blue);}
+  .water-chip .u{font-size:10.5px;color:var(--ink-soft);}
+
   .day-group{margin-bottom:18px;}
+  .history-filter{display:flex;align-items:center;gap:10px;margin-bottom:16px;}
+  .history-filter input[type=date]{
+    flex:1;padding:11px 13px;border-radius:10px;border:1.5px solid var(--line);
+    background:var(--surface);font-size:14px;color:var(--ink);box-shadow:var(--shadow);
+  }
+  .filter-clear{
+    border:1.5px solid var(--line);background:var(--surface);color:var(--ink-soft);
+    padding:10px 14px;border-radius:10px;font-size:13px;cursor:pointer;white-space:nowrap;
+  }
+  .filter-clear:hover{color:var(--coral-deep);border-color:var(--coral);}
   .day-label{font-size:12.5px;color:var(--ink-soft);font-weight:600;margin-bottom:8px;letter-spacing:.3px;}
-  .entry-card{
-    background:var(--surface);border:1px solid var(--line);border-radius:16px;
-    padding:14px 15px;margin-bottom:10px;box-shadow:var(--shadow);
-    display:flex;gap:12px;
-  }
-  .entry-thumb{
-    width:64px;height:64px;border-radius:12px;object-fit:cover;flex-shrink:0;background:var(--teal-soft);
-  }
+  .entry-card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px 15px;margin-bottom:10px;box-shadow:var(--shadow);display:flex;gap:12px;}
+  .entry-thumb{width:64px;height:64px;border-radius:12px;object-fit:cover;flex-shrink:0;background:var(--teal-soft);}
   .entry-thumb.empty{display:flex;align-items:center;justify-content:center;font-size:22px;color:var(--teal);}
+  .entry-thumb.type-water{background:var(--blue-soft);color:var(--blue);}
+  .entry-thumb.type-exercise{background:var(--gold-soft);color:#8A6A1E;}
   .entry-body{flex:1;min-width:0;}
-  .entry-top{display:flex;align-items:center;justify-content:between;gap:8px;margin-bottom:4px;}
-  .badge{
-    display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;
-    background:var(--gold-soft);color:#8A6A1E;
-  }
-  .entry-dinner{font-size:14.5px;font-weight:500;margin:4px 0 6px;line-height:1.4;
-    overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
+  .entry-top{display:flex;align-items:center;gap:6px;margin-bottom:4px;flex-wrap:wrap;}
+  .badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;background:var(--gold-soft);color:#8A6A1E;}
+  .type-tag{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10.5px;font-weight:600;}
+  .type-tag.meal{background:#FBE6DB;color:var(--coral-deep);}
+  .type-tag.water{background:var(--blue-soft);color:var(--blue);}
+  .type-tag.exercise{background:var(--gold-soft);color:#8A6A1E;}
+  .entry-dinner{font-size:14.5px;font-weight:500;margin:4px 0 6px;line-height:1.4;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
   .entry-stats{display:flex;flex-wrap:wrap;gap:8px;font-size:11.5px;color:var(--ink-soft);}
   .entry-stats span{background:var(--parchment);padding:2px 8px;border-radius:8px;}
   .entry-stats b{color:var(--ink);font-family:'IBM Plex Mono',monospace;}
@@ -188,12 +152,8 @@
   .empty-state{text-align:center;color:var(--ink-soft);font-size:13.5px;padding:40px 10px;line-height:1.7;}
   .empty-state .ic{font-size:34px;display:block;margin-bottom:10px;}
 
-  /* ---------- Dashboard ---------- */
   .stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:6px;}
-  .stat-card{
-    background:var(--surface);border:1px solid var(--line);border-radius:14px;
-    padding:12px 10px;text-align:center;box-shadow:var(--shadow);
-  }
+  .stat-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 10px;text-align:center;box-shadow:var(--shadow);}
   .stat-card .who-name{font-size:12px;font-weight:600;color:var(--ink-soft);margin-bottom:2px;}
   .stat-card .big{font-family:'IBM Plex Mono',monospace;font-size:19px;font-weight:600;color:var(--coral-deep);}
   .stat-card .lbl{font-size:10.5px;color:var(--ink-soft);margin-top:1px;}
@@ -207,11 +167,10 @@
   .bar-track{background:var(--parchment);border-radius:8px;height:10px;overflow:hidden;}
   .bar-fill{height:100%;border-radius:8px;transition:width .6s ease;}
 
-  .plate-row{display:flex;justify-content:center;gap:22px;margin:18px 0 8px;}
+  .plate-row{display:flex;justify-content:center;gap:22px;margin:18px 0 8px;flex-wrap:wrap;}
   .plate{position:relative;width:84px;height:84px;}
   .plate svg{transform:rotate(-90deg);}
-  .plate-name{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
-    flex-direction:column;font-size:10.5px;color:var(--ink-soft);font-weight:600;}
+  .plate-name{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;font-size:10.5px;color:var(--ink-soft);font-weight:600;}
   .plate-name b{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--ink);font-weight:600;}
 
   .loading{display:flex;align-items:center;justify-content:center;min-height:60vh;color:var(--ink-soft);font-size:14px;}
@@ -223,7 +182,6 @@
 <div class="toast" id="toast"></div>
 
 <script>
-/* ============ Firebase init ============ */
 const firebaseConfig = {
   apiKey: "AIzaSyBFfwjx-fXlwlSuwzJx8_vjSCnD6ku9eqw",
   authDomain: "tinahonwybeauty.firebaseapp.com",
@@ -237,13 +195,16 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
-const EXERCISE_TYPES = ["跑步","重訓","瑜伽","游泳","騎車","快走/散步","球類運動","居家運動","無運動","其他"];
+const MEAL_TYPES = ["早餐","午餐","晚餐","點心"];
+const EXERCISE_TYPES = ["跑步","重訓","瑜伽","游泳","騎車","快走/散步","球類運動","居家運動","其他"];
+const WATER_QUICK = [200,350,500];
 const PALETTE = ["#D9663F","#3E6259","#C99A3E","#7D5BA6","#3E7CB1","#B5432F"];
 function nameColor(name){
   let h = 0;
   for(let i=0;i<(name||'').length;i++){ h = (h*31 + name.charCodeAt(i)) % 997; }
   return PALETTE[h % PALETTE.length];
 }
+function todayStr(){ return new Date().toISOString().slice(0,10); }
 
 let currentUser = null;
 let currentProfile = null;
@@ -252,8 +213,10 @@ let allUsers = [];
 let unsubEntries = null;
 let unsubUsers = null;
 let activeTab = 'add';
+let addType = 'meal';
 let photoDataUrl = null;
 let authMode = 'login';
+let historyFilterDate = '';
 
 const root = document.getElementById('root');
 
@@ -265,7 +228,6 @@ function toast(msg){
 }
 function esc(s){return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 
-/* ============ Auth state ============ */
 auth.onAuthStateChanged(async (user)=>{
   currentUser = user;
   if(user){
@@ -294,7 +256,7 @@ function listenUsers(){
 
 function listenEntries(){
   if(unsubEntries) unsubEntries();
-  unsubEntries = db.collection('entries').orderBy('date','desc').limit(300)
+  unsubEntries = db.collection('entries').orderBy('date','desc').limit(400)
     .onSnapshot(snap=>{
       allEntries = snap.docs.map(d=>({id:d.id, ...d.data()}));
       renderApp();
@@ -304,14 +266,13 @@ function listenEntries(){
     });
 }
 
-/* ============ Auth screens ============ */
 function renderAuth(){
   root.innerHTML = `
     <div class="auth-wrap">
       <div class="auth-hero">
         <div class="eyebrow">每天,漂亮一點點</div>
         <h1 class="display">一起漂漂亮亮</h1>
-        <p>每天花30秒,記下今天的晚餐、營養、運動與喝水量。大家共用一份紀錄,隨時同步。</p>
+        <p>記下今天吃了什麼、喝了多少水、做了什麼運動。大家共用一份紀錄,隨時同步。</p>
       </div>
       <div class="card">
         <div id="authError"></div>
@@ -385,7 +346,6 @@ async function handleAuthSubmit(){
   btn.disabled = false; btn.textContent = authMode==='login'?'登入':'建立帳號';
 }
 
-/* ============ App shell ============ */
 function renderApp(){
   root.innerHTML = `
     <div class="topbar">
@@ -418,20 +378,36 @@ function renderApp(){
   else renderDashPage();
 }
 
-/* ============ Add entry page ============ */
 function renderAddPage(){
   const page = document.getElementById('page');
-  const today = new Date().toISOString().slice(0,10);
-  photoDataUrl = null;
   page.innerHTML = `
-    <div class="section-title">今天的晚餐</div>
+    <div class="seg">
+      <button class="${addType==='meal'?'active':''}" data-type="meal"><span class="ic">🍚</span>餐點</button>
+      <button class="${addType==='water'?'active type-water':''}" data-type="water"><span class="ic">💧</span>喝水</button>
+      <button class="${addType==='exercise'?'active type-exercise':''}" data-type="exercise"><span class="ic">🏃</span>運動</button>
+    </div>
+    <div id="formArea"></div>
+  `;
+  page.querySelectorAll('.seg button').forEach(b=>{
+    b.onclick = ()=>{ addType=b.dataset.type; renderAddPage(); };
+  });
+  if(addType==='meal') renderMealForm();
+  else if(addType==='water') renderWaterForm();
+  else renderExerciseForm();
+}
+
+function renderMealForm(){
+  photoDataUrl = null;
+  document.getElementById('formArea').innerHTML = `
     <div class="form-card">
       <div class="grid2">
-        <div class="field compact"><label>日期</label><input type="date" id="f_date" value="${today}"></div>
-        <div class="field compact"><label>喝水量 (ml)</label><input type="number" id="f_water" placeholder="1500" min="0"></div>
+        <div class="field compact"><label>日期</label><input type="date" id="f_date" value="${todayStr()}"></div>
+        <div class="field compact"><label>餐點類型</label>
+          <select id="f_mealtype">${MEAL_TYPES.map(t=>`<option>${t}</option>`).join('')}</select>
+        </div>
       </div>
-      <div class="field compact"><label>晚餐內容</label>
-        <textarea id="f_dinner" placeholder="今天吃了什麼？例如：雞胸肉沙拉＋地瓜"></textarea>
+      <div class="field compact"><label>內容</label>
+        <textarea id="f_dinner" placeholder="吃了什麼？例如：雞胸肉沙拉＋地瓜"></textarea>
       </div>
       <div class="grid3">
         <div class="field compact"><label>熱量 kcal</label><input type="number" id="f_cal" min="0"></div>
@@ -443,29 +419,62 @@ function renderAddPage(){
         <div class="field compact"><label>膳食纖維 g</label><input type="number" id="f_fiber" min="0"></div>
         <div class="field compact"><label>糖 g</label><input type="number" id="f_sugar" min="0"></div>
       </div>
-      <div class="grid2">
-        <div class="field compact"><label>運動項目</label>
-          <select id="f_exercise">${EXERCISE_TYPES.map(t=>`<option>${t}</option>`).join('')}</select>
-        </div>
-        <div class="field compact"><label>運動時長 (分鐘)</label><input type="number" id="f_exmin" min="0"></div>
-      </div>
-      <div class="field compact"><label>晚餐照片</label>
+      <div class="field compact"><label>照片</label>
         <div class="photo-box" id="photoBox">
           <div class="placeholder"><span class="ic">📷</span>點一下拍照或選擇照片</div>
         </div>
         <input type="file" id="f_photo" accept="image/*" capture="environment" style="display:none">
       </div>
       <div class="field compact"><label>備註（選填）</label><input type="text" id="f_note" placeholder="任何想記下的小事"></div>
-      <div class="submit-row">
-        <button class="btn btn-primary" id="submitEntry">儲存今天的紀錄</button>
-      </div>
+      <div class="submit-row"><button class="btn btn-primary" id="submitEntry">儲存這筆紀錄</button></div>
     </div>
   `;
   const photoBox = document.getElementById('photoBox');
   const fileInput = document.getElementById('f_photo');
   photoBox.onclick = ()=>fileInput.click();
   fileInput.onchange = handlePhotoSelect;
-  document.getElementById('submitEntry').onclick = submitEntry;
+  document.getElementById('submitEntry').onclick = submitMeal;
+}
+
+function renderWaterForm(){
+  document.getElementById('formArea').innerHTML = `
+    <div class="water-quick">
+      ${WATER_QUICK.map(v=>`<div class="water-chip" data-amt="${v}"><div class="amt">+${v}</div><div class="u">ml</div></div>`).join('')}
+    </div>
+    <div class="form-card">
+      <div class="grid2">
+        <div class="field compact"><label>日期</label><input type="date" id="w_date" value="${todayStr()}"></div>
+        <div class="field compact"><label>自訂水量 (ml)</label><input type="number" id="w_amt" placeholder="例如 300" min="0"></div>
+      </div>
+      <div class="submit-row"><button class="btn btn-primary" id="submitWaterCustom">記錄這筆喝水</button></div>
+    </div>
+  `;
+  document.querySelectorAll('.water-chip').forEach(c=>{
+    c.onclick = ()=>submitWater(Number(c.dataset.amt), todayStr());
+  });
+  document.getElementById('submitWaterCustom').onclick = ()=>{
+    const amt = Number(document.getElementById('w_amt').value||0);
+    const date = document.getElementById('w_date').value || todayStr();
+    if(amt<=0){ toast('請輸入水量'); return; }
+    submitWater(amt, date);
+  };
+}
+
+function renderExerciseForm(){
+  document.getElementById('formArea').innerHTML = `
+    <div class="form-card">
+      <div class="grid2">
+        <div class="field compact"><label>日期</label><input type="date" id="x_date" value="${todayStr()}"></div>
+        <div class="field compact"><label>運動時長 (分鐘)</label><input type="number" id="x_min" min="0" placeholder="30"></div>
+      </div>
+      <div class="field compact"><label>運動項目</label>
+        <select id="x_type">${EXERCISE_TYPES.map(t=>`<option>${t}</option>`).join('')}</select>
+      </div>
+      <div class="field compact"><label>備註（選填）</label><input type="text" id="x_note" placeholder="例如：公園慢跑、5公里"></div>
+      <div class="submit-row"><button class="btn btn-primary" id="submitExercise">儲存這筆運動</button></div>
+    </div>
+  `;
+  document.getElementById('submitExercise').onclick = submitExercise;
 }
 
 function handlePhotoSelect(e){
@@ -498,50 +507,103 @@ function handlePhotoSelect(e){
   reader.readAsDataURL(file);
 }
 
-async function submitEntry(){
+async function submitMeal(){
   const btn = document.getElementById('submitEntry');
   const dinner = document.getElementById('f_dinner').value.trim();
   const date = document.getElementById('f_date').value;
   if(!date){ toast('請選擇日期'); return; }
-  if(!dinner){ toast('請填寫晚餐內容'); return; }
+  if(!dinner){ toast('請填寫內容'); return; }
   btn.disabled = true; btn.textContent = '儲存中…';
   const num = (id)=>{ const v = document.getElementById(id).value; return v===''?0:Number(v); };
   const data = {
+    type:'meal',
     uid: currentUser.uid,
     name: currentProfile.name,
-    date, dinner,
+    date, mealType: document.getElementById('f_mealtype').value,
+    dinner,
     calories: num('f_cal'), protein: num('f_protein'), carb: num('f_carb'),
     fat: num('f_fat'), fiber: num('f_fiber'), sugar: num('f_sugar'),
-    exercise: document.getElementById('f_exercise').value,
-    exerciseMin: num('f_exmin'),
-    water: num('f_water'),
     note: document.getElementById('f_note').value.trim(),
     photo: photoDataUrl || null,
     createdAt: firebase.firestore.FieldValue.serverTimestamp()
   };
   try{
     await db.collection('entries').add(data);
-    toast('已儲存今天的紀錄 🎉');
+    toast('已儲存 🎉');
     activeTab = 'history';
     renderApp();
   }catch(e){
     console.error(e);
     toast('儲存失敗：'+e.message);
-    btn.disabled = false; btn.textContent = '儲存今天的紀錄';
+    btn.disabled = false; btn.textContent = '儲存這筆紀錄';
   }
 }
 
-/* ============ History page ============ */
+async function submitWater(amt, date){
+  try{
+    await db.collection('entries').add({
+      type:'water', uid: currentUser.uid, name: currentProfile.name,
+      date, water: amt,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    toast(`已記錄 +${amt}ml 💧`);
+  }catch(e){
+    toast('儲存失敗：'+e.message);
+  }
+}
+
+async function submitExercise(){
+  const btn = document.getElementById('submitExercise');
+  const date = document.getElementById('x_date').value;
+  const min = Number(document.getElementById('x_min').value||0);
+  if(!date){ toast('請選擇日期'); return; }
+  if(min<=0){ toast('請輸入運動時長'); return; }
+  btn.disabled = true; btn.textContent = '儲存中…';
+  try{
+    await db.collection('entries').add({
+      type:'exercise', uid: currentUser.uid, name: currentProfile.name,
+      date, exercise: document.getElementById('x_type').value,
+      exerciseMin: min,
+      note: document.getElementById('x_note').value.trim(),
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    toast('已儲存這筆運動 🏃');
+    activeTab = 'history';
+    renderApp();
+  }catch(e){
+    console.error(e);
+    toast('儲存失敗：'+e.message);
+    btn.disabled = false; btn.textContent = '儲存這筆運動';
+  }
+}
+
 function renderHistoryPage(){
   const page = document.getElementById('page');
+  const filterBar = `
+    <div class="history-filter">
+      <input type="date" id="historyDate" value="${historyFilterDate}">
+      ${historyFilterDate ? `<button id="clearFilter" class="filter-clear">清除</button>` : ''}
+    </div>
+  `;
+  const filtered = historyFilterDate
+    ? allEntries.filter(e=>e.date===historyFilterDate)
+    : allEntries;
+
   if(allEntries.length===0){
-    page.innerHTML = `<div class="empty-state"><span class="ic">🍽️</span>還沒有任何紀錄<br>去「新增紀錄」寫下今天吃了什麼吧</div>`;
+    page.innerHTML = `<div class="empty-state"><span class="ic">🍽️</span>還沒有任何紀錄<br>去「新增紀錄」寫下今天的第一筆吧</div>`;
     return;
   }
+  if(filtered.length===0){
+    page.innerHTML = `<div class="section-title">歷史紀錄</div>` + filterBar +
+      `<div class="empty-state"><span class="ic">📅</span>這天還沒有任何紀錄</div>`;
+    bindHistoryFilter();
+    return;
+  }
+
   const byDate = {};
-  allEntries.forEach(e=>{ (byDate[e.date] = byDate[e.date]||[]).push(e); });
+  filtered.forEach(e=>{ (byDate[e.date] = byDate[e.date]||[]).push(e); });
   const dates = Object.keys(byDate).sort((a,b)=>b.localeCompare(a));
-  page.innerHTML = `<div class="section-title">歷史紀錄</div>` + dates.map(date=>`
+  page.innerHTML = `<div class="section-title">歷史紀錄</div>` + filterBar + dates.map(date=>`
     <div class="day-group">
       <div class="day-label">${formatDate(date)}</div>
       ${byDate[date].map(entryCard).join('')}
@@ -550,6 +612,18 @@ function renderHistoryPage(){
   page.querySelectorAll('.del-btn').forEach(b=>{
     b.onclick = ()=>deleteEntry(b.dataset.id);
   });
+  bindHistoryFilter();
+}
+
+function bindHistoryFilter(){
+  const input = document.getElementById('historyDate');
+  if(input){
+    input.onchange = ()=>{ historyFilterDate = input.value; renderHistoryPage(); };
+  }
+  const clearBtn = document.getElementById('clearFilter');
+  if(clearBtn){
+    clearBtn.onclick = ()=>{ historyFilterDate=''; renderHistoryPage(); };
+  }
 }
 
 function formatDate(d){
@@ -560,25 +634,41 @@ function formatDate(d){
 
 function entryCard(e){
   const mine = e.uid === currentUser.uid;
-  const thumb = e.photo
-    ? `<img class="entry-thumb" src="${e.photo}">`
-    : `<div class="entry-thumb empty">🍚</div>`;
+  const type = e.type || 'meal';
+  let thumb, title, stats, typeLabel;
+
+  if(type==='meal'){
+    thumb = e.photo ? `<img class="entry-thumb" src="${e.photo}">` : `<div class="entry-thumb empty">🍚</div>`;
+    typeLabel = `<span class="type-tag meal">${esc(e.mealType||'餐點')}</span>`;
+    title = `<div class="entry-dinner">${esc(e.dinner||'')}</div>`;
+    stats = `<div class="entry-stats">
+        <span><b>${e.calories||0}</b> kcal</span>
+        <span>蛋白質 <b>${e.protein||0}</b>g</span>
+        <span>碳水 <b>${e.carb||0}</b>g</span>
+        <span>脂肪 <b>${e.fat||0}</b>g</span>
+      </div>`;
+  } else if(type==='water'){
+    thumb = `<div class="entry-thumb empty type-water">💧</div>`;
+    typeLabel = `<span class="type-tag water">喝水</span>`;
+    title = `<div class="entry-dinner">喝了 <b class="num">${e.water||0}</b> ml 水</div>`;
+    stats = '';
+  } else {
+    thumb = `<div class="entry-thumb empty type-exercise">🏃</div>`;
+    typeLabel = `<span class="type-tag exercise">運動</span>`;
+    title = `<div class="entry-dinner">${esc(e.exercise||'運動')} <b class="num">${e.exerciseMin||0}</b> 分鐘</div>`;
+    stats = '';
+  }
+
   return `
     <div class="entry-card">
       ${thumb}
       <div class="entry-body">
         <div class="entry-top">
           <span class="badge" style="background:${nameColor(e.name)+'22'};color:${nameColor(e.name)}">${esc(e.name)}</span>
+          ${typeLabel}
         </div>
-        <div class="entry-dinner">${esc(e.dinner)}</div>
-        <div class="entry-stats">
-          <span><b>${e.calories||0}</b> kcal</span>
-          <span>蛋白質 <b>${e.protein||0}</b>g</span>
-          <span>碳水 <b>${e.carb||0}</b>g</span>
-          <span>脂肪 <b>${e.fat||0}</b>g</span>
-          ${e.exercise && e.exercise!=='無運動' ? `<span>${esc(e.exercise)} <b>${e.exerciseMin||0}</b>分</span>` : ''}
-          <span>💧 <b>${e.water||0}</b>ml</span>
-        </div>
+        ${title}
+        ${stats}
         ${e.note ? `<div style="font-size:12px;color:var(--ink-soft);margin-top:6px;">${esc(e.note)}</div>` : ''}
         ${mine ? `<div class="entry-actions"><button class="del-btn" data-id="${e.id}">刪除</button></div>` : ''}
       </div>
@@ -596,7 +686,6 @@ async function deleteEntry(id){
   }
 }
 
-/* ============ Dashboard page ============ */
 function renderDashPage(){
   const page = document.getElementById('page');
   const rosterNames = allUsers.map(u=>u.name).filter(Boolean);
@@ -606,16 +695,37 @@ function renderDashPage(){
     page.innerHTML = `<div class="empty-state"><span class="ic">◎</span>還沒有資料可以統計<br>大家開始記錄後,這裡就會顯示比較圖表</div>`;
     return;
   }
+
+  const mealEntries = allEntries.filter(e=>(e.type||'meal')==='meal');
+  const waterEntries = allEntries.filter(e=>e.type==='water');
+  const exEntries = allEntries.filter(e=>e.type==='exercise');
+
   const stats = {};
-  names.forEach(n=>stats[n] = {count:0, cal:0, protein:0, carb:0, fat:0, water:0, exmin:0});
-  allEntries.forEach(e=>{
-    if(!stats[e.name]) stats[e.name] = {count:0, cal:0, protein:0, carb:0, fat:0, water:0, exmin:0};
+  names.forEach(n=>stats[n] = {mealCount:0, cal:0, protein:0, carb:0, fat:0, waterByDate:{}, exmin:0});
+
+  mealEntries.forEach(e=>{
+    if(!stats[e.name]) stats[e.name] = {mealCount:0, cal:0, protein:0, carb:0, fat:0, waterByDate:{}, exmin:0};
     const s = stats[e.name];
-    s.count++; s.cal += (e.calories||0); s.protein += (e.protein||0);
-    s.carb += (e.carb||0); s.fat += (e.fat||0); s.water += (e.water||0);
-    s.exmin += (e.exerciseMin||0);
+    s.mealCount++; s.cal += (e.calories||0); s.protein += (e.protein||0);
+    s.carb += (e.carb||0); s.fat += (e.fat||0);
   });
-  const avg = (s,k)=> s.count? Math.round(s[k]/s.count):0;
+  waterEntries.forEach(e=>{
+    if(!stats[e.name]) stats[e.name] = {mealCount:0, cal:0, protein:0, carb:0, fat:0, waterByDate:{}, exmin:0};
+    const s = stats[e.name];
+    s.waterByDate[e.date] = (s.waterByDate[e.date]||0) + (e.water||0);
+  });
+  exEntries.forEach(e=>{
+    if(!stats[e.name]) stats[e.name] = {mealCount:0, cal:0, protein:0, carb:0, fat:0, waterByDate:{}, exmin:0};
+    stats[e.name].exmin += (e.exerciseMin||0);
+  });
+
+  const avgMeal = (s,k)=> s.mealCount? Math.round(s[k]/s.mealCount):0;
+  const avgWater = (s)=>{
+    const days = Object.keys(s.waterByDate);
+    if(days.length===0) return 0;
+    const total = days.reduce((sum,d)=>sum+s.waterByDate[d],0);
+    return Math.round(total/days.length);
+  };
   const gridCols = `repeat(${Math.min(names.length,4)},1fr)`;
 
   page.innerHTML = `
@@ -625,13 +735,13 @@ function renderDashPage(){
     </div>
 
     <div class="bar-block">
-      <h3>平均每日熱量攝取</h3>
-      ${names.map(n=>barRow(n, avg(stats[n],'cal'), 'kcal', 2400)).join('')}
+      <h3>平均每餐熱量</h3>
+      ${names.map(n=>barRow(n, avgMeal(stats[n],'cal'), 'kcal', 900)).join('')}
     </div>
 
     <div class="bar-block">
-      <h3>平均喝水量</h3>
-      ${names.map(n=>barRow(n, avg(stats[n],'water'), 'ml', 2500)).join('')}
+      <h3>平均每日喝水量</h3>
+      ${names.map(n=>barRow(n, avgWater(stats[n]), 'ml', 2500)).join('')}
     </div>
 
     <div class="bar-block">
@@ -639,14 +749,14 @@ function renderDashPage(){
       ${names.map(n=>barRow(n, stats[n].exmin, '分鐘', Math.max(60,...names.map(m=>stats[m].exmin)))).join('')}
     </div>
 
-    <div class="section-title">平均三大營養素 (g)</div>
+    <div class="section-title">平均每餐營養素 (g)</div>
     <div class="stat-grid" style="grid-template-columns:${gridCols};margin-bottom:18px;">
       ${names.map(n=>`
         <div class="stat-card">
           <div class="who-name" style="color:${nameColor(n)}">${esc(n)}</div>
-          <div class="big">${avg(stats[n],'protein')}</div><div class="lbl">蛋白質 g</div>
-          <div class="big" style="margin-top:6px;">${avg(stats[n],'carb')}</div><div class="lbl">碳水 g</div>
-          <div class="big" style="margin-top:6px;">${avg(stats[n],'fat')}</div><div class="lbl">脂肪 g</div>
+          <div class="big">${avgMeal(stats[n],'protein')}</div><div class="lbl">蛋白質 g</div>
+          <div class="big" style="margin-top:6px;">${avgMeal(stats[n],'carb')}</div><div class="lbl">碳水 g</div>
+          <div class="big" style="margin-top:6px;">${avgMeal(stats[n],'fat')}</div><div class="lbl">脂肪 g</div>
         </div>
       `).join('')}
     </div>
@@ -667,8 +777,9 @@ function barRow(name, val, unit, max){
 }
 
 function plateSvg(name, s){
-  const target = 2000;
-  const pct = Math.min(1, s.count? (s.cal/s.count)/target : 0);
+  const target = 700;
+  const avgCal = s.mealCount? s.cal/s.mealCount : 0;
+  const pct = Math.min(1, avgCal/target);
   const r = 34, c = 2*Math.PI*r;
   const color = nameColor(name);
   return `
@@ -678,12 +789,11 @@ function plateSvg(name, s){
         <circle cx="42" cy="42" r="${r}" fill="none" stroke="${color}" stroke-width="7"
           stroke-dasharray="${c}" stroke-dashoffset="${c*(1-pct)}" stroke-linecap="round"/>
       </svg>
-      <div class="plate-name">${esc(name)}<b>${s.count}天</b></div>
+      <div class="plate-name">${esc(name)}<b>${s.mealCount}餐</b></div>
     </div>
   `;
 }
 
-/* ============ boot ============ */
 root.innerHTML = `<div class="loading">載入中…</div>`;
 </script>
 </body>
