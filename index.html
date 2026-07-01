@@ -185,12 +185,14 @@
   .plate-name{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;font-size:10.5px;color:var(--ink-soft);font-weight:600;}
   .plate-name b{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--ink);font-weight:600;}
 
-  .ex-list{display:flex;flex-direction:column;gap:2px;margin-bottom:10px;}
-  .ex-row{display:flex;align-items:center;gap:9px;padding:9px 2px;border-bottom:1px solid var(--line);font-size:12.5px;}
-  .ex-row:last-child{border-bottom:none;}
-  .ex-date{font-family:'IBM Plex Mono',monospace;color:var(--ink-soft);width:38px;flex-shrink:0;}
-  .ex-type{flex:1;color:var(--ink);}
-  .ex-min{color:var(--gold);font-weight:600;}
+  .ex-groups{margin-bottom:10px;}
+  .ex-group{display:flex;gap:12px;padding:9px 0;border-bottom:1px solid var(--line);}
+  .ex-group:last-child{border-bottom:none;}
+  .ex-group-date{font-family:'IBM Plex Mono',monospace;color:var(--ink-soft);font-size:12.5px;width:36px;flex-shrink:0;padding-top:2px;}
+  .ex-group-rows{flex:1;display:flex;flex-direction:column;gap:7px;min-width:0;}
+  .ex-row{display:flex;align-items:center;gap:9px;font-size:12.5px;}
+  .ex-type{flex:1;color:var(--ink);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .ex-min{color:var(--gold);font-weight:600;flex-shrink:0;}
   .ex-empty{color:var(--ink-soft);font-size:12.5px;padding:14px 2px;text-align:center;}
 
   /* ---------- Board (留言板) ---------- */
@@ -860,14 +862,7 @@ function renderDashPage(){
       <h3>運動紀錄</h3>
       ${exEntries.length===0
         ? `<div class="ex-empty">這段期間還沒有運動紀錄</div>`
-        : `<div class="ex-list">${[...exEntries].sort((a,b)=>b.date.localeCompare(a.date)).map(e=>`
-            <div class="ex-row">
-              <span class="ex-date">${formatDateShort(e.date)}</span>
-              <span class="badge" style="background:${nameColor(e.name)+'22'};color:${nameColor(e.name)}">${esc(e.name)}</span>
-              <span class="ex-type">${esc(e.exercise||'運動')}</span>
-              <span class="ex-min num">${e.exerciseMin||0} 分</span>
-            </div>
-          `).join('')}</div>`}
+        : renderExGroups(exEntries)}
     </div>
 
     <div class="section-title">平均每餐營養素 (g)</div>
@@ -891,6 +886,26 @@ function renderDashPage(){
   page.querySelectorAll('.person-filter .chip').forEach(b=>{
     b.onclick = ()=>{ dashPerson = b.dataset.person; renderDashPage(); };
   });
+}
+
+function renderExGroups(exEntries){
+  const byDate = {};
+  exEntries.forEach(e=>{ (byDate[e.date] = byDate[e.date]||[]).push(e); });
+  const dates = Object.keys(byDate).sort((a,b)=>b.localeCompare(a));
+  return `<div class="ex-groups">` + dates.map(date=>`
+    <div class="ex-group">
+      <div class="ex-group-date">${formatDateShort(date)}</div>
+      <div class="ex-group-rows">
+        ${byDate[date].map(e=>`
+          <div class="ex-row">
+            <span class="badge" style="background:${nameColor(e.name)+'22'};color:${nameColor(e.name)}">${esc(e.name)}</span>
+            <span class="ex-type">${esc(e.exercise||'運動')}</span>
+            <span class="ex-min num">${e.exerciseMin||0} 分</span>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `).join('') + `</div>`;
 }
 
 function barRow(name, val, unit, max, refTarget){
