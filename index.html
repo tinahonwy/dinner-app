@@ -99,7 +99,12 @@
   @media (max-width:430px){
     .grid2{grid-template-columns:1fr;}
   }
-  input[type=date]{min-width:0;width:100%;max-width:100%;box-sizing:border-box;overflow:hidden;}
+  .date-wrap{position:relative;overflow:hidden;border-radius:10px;border:1.5px solid var(--line);background:#fff;}
+  .date-wrap input[type=date]{
+    border:none;background:transparent;display:block;width:100%;min-width:150px;
+    padding:11px 8px;font-size:14px;color:var(--ink);box-sizing:border-box;
+  }
+  .date-wrap input[type=date]:focus{outline:none;}
   .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
   .field.compact{margin-bottom:12px;}
   .field.compact label{font-size:11.5px;}
@@ -126,10 +131,7 @@
 
   .day-group{margin-bottom:18px;}
   .history-filter{display:flex;align-items:center;gap:10px;margin-bottom:16px;}
-  .history-filter input[type=date]{
-    flex:1;padding:11px 13px;border-radius:10px;border:1.5px solid var(--line);
-    background:var(--surface);font-size:14px;color:var(--ink);box-shadow:var(--shadow);
-  }
+  .history-filter .date-wrap{box-shadow:var(--shadow);}
   .filter-clear{
     border:1.5px solid var(--line);background:var(--surface);color:var(--ink-soft);
     padding:10px 14px;border-radius:10px;font-size:13px;cursor:pointer;white-space:nowrap;
@@ -502,7 +504,7 @@ function renderMealForm(){
   document.getElementById('formArea').innerHTML = `
     <div class="form-card">
       <div class="grid2">
-        <div class="field compact"><label>日期</label><input type="date" id="f_date" value="${e? e.date : todayStr()}"></div>
+        <div class="field compact"><label>日期</label><div class="date-wrap"><input type="date" id="f_date" value="${e? e.date : todayStr()}"></div></div>
         <div class="field compact"><label>餐點類型</label>
           <select id="f_mealtype">${MEAL_TYPES.map(t=>`<option ${e && e.mealType===t?'selected':''}>${t}</option>`).join('')}</select>
         </div>
@@ -552,7 +554,7 @@ function renderWaterForm(){
     </div>`}
     <div class="form-card">
       <div class="grid2">
-        <div class="field compact"><label>日期</label><input type="date" id="w_date" value="${e? e.date : todayStr()}"></div>
+        <div class="field compact"><label>日期</label><div class="date-wrap"><input type="date" id="w_date" value="${e? e.date : todayStr()}"></div></div>
         <div class="field compact"><label>${e?'水量 (ml)':'自訂水量 (ml)'}</label><input type="number" id="w_amt" placeholder="例如 300" min="0" value="${e? e.water : ''}"></div>
       </div>
       <div class="submit-row"><button class="btn btn-primary" id="submitWaterCustom">${e?'更新這筆喝水':'記錄這筆喝水'}</button></div>
@@ -579,7 +581,7 @@ function renderExerciseForm(){
   document.getElementById('formArea').innerHTML = `
     <div class="form-card">
       <div class="grid2">
-        <div class="field compact"><label>日期</label><input type="date" id="x_date" value="${e? e.date : todayStr()}"></div>
+        <div class="field compact"><label>日期</label><div class="date-wrap"><input type="date" id="x_date" value="${e? e.date : todayStr()}"></div></div>
         <div class="field compact"><label>運動時長 (分鐘)</label><input type="number" id="x_min" min="0" placeholder="30" value="${e? e.exerciseMin : ''}"></div>
       </div>
       <div class="field compact"><label>運動項目</label>
@@ -738,7 +740,7 @@ function renderHistoryPage(){
   const page = document.getElementById('page');
   const filterBar = `
     <div class="history-filter">
-      <input type="date" id="historyDate" value="${historyFilterDate}">
+      <div class="date-wrap" style="flex:1;"><input type="date" id="historyDate" value="${historyFilterDate}"></div>
       ${historyFilterDate ? `<button id="clearFilter" class="filter-clear">清除</button>` : ''}
     </div>
   `;
