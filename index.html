@@ -586,9 +586,13 @@ function openProfileModal(){
     const btn = document.getElementById('saveProfileBtn');
     const name = document.getElementById('profileNameInput').value.trim();
     if(!name){ toast('請輸入名字'); return; }
-    btn.disabled = true; btn.textContent = '儲存中…';
+    const nameChanged = name !== currentProfile.name;
+    btn.disabled = true; btn.textContent = nameChanged ? '同步舊紀錄中…' : '儲存中…';
     try{
       await db.collection('users').doc(currentUser.uid).update({ name, avatar: newAvatar || null });
+      if(nameChanged){
+        await syncNameAcrossData(currentUser.uid, name);
+      }
       currentProfile.name = name;
       currentProfile.avatar = newAvatar || null;
       overlay.remove();
@@ -600,6 +604,31 @@ function openProfileModal(){
       btn.disabled = false; btn.textContent = '儲存';
     }
   };
+}
+
+async function syncNameAcrossData(uid, newName){
+  const entriesSnap = await db.collection('entries').where('uid','==',uid).get();
+  if(!entriesSnap.empty){
+    const batch = db.batch();
+    entriesSnap.forEach(doc=>batch.update(doc.ref, {name:newName}));
+    await batch.commit();
+  }
+  const postsSnap = await db.collection('posts').where('uid','==',uid).get();
+  if(!postsSnap.empty){
+    const batch2 = db.batch();
+    postsSnap.forEach(doc=>batch2.update(doc.ref, {name:newName}));
+    await batch2.commit();
+  }
+  try{
+    const commentsSnap = await db.collectionGroup('comments').where('uid','==',uid).get();
+    if(!commentsSnap.empty){
+      const batch3 = db.batch();
+      commentsSnap.forEach(doc=>batch3.update(doc.ref, {name:newName}));
+      await batch3.commit();
+    }
+  }catch(e){
+    console.error('comment sync failed', e);
+  }
 }
 
 function renderApp(){
