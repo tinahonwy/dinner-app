@@ -541,10 +541,22 @@ function renderExerciseForm(){
       <div class="field compact"><label>運動項目</label>
         <select id="x_type">${EXERCISE_TYPES.map(t=>`<option>${t}</option>`).join('')}</select>
       </div>
+      <div class="field compact hidden" id="x_detail_wrap">
+        <label>請說明是什麼運動</label>
+        <input type="text" id="x_detail" placeholder="例如：羽毛球、皮拉提斯、爬山">
+      </div>
       <div class="field compact"><label>備註（選填）</label><input type="text" id="x_note" placeholder="例如：公園慢跑、5公里"></div>
       <div class="submit-row"><button class="btn btn-primary" id="submitExercise">儲存這筆運動</button></div>
     </div>
   `;
+  const typeSel = document.getElementById('x_type');
+  const detailWrap = document.getElementById('x_detail_wrap');
+  const syncDetail = ()=>{
+    const needsDetail = typeSel.value==='球類運動' || typeSel.value==='其他';
+    detailWrap.classList.toggle('hidden', !needsDetail);
+  };
+  typeSel.onchange = syncDetail;
+  syncDetail();
   document.getElementById('submitExercise').onclick = submitExercise;
 }
 
@@ -629,11 +641,17 @@ async function submitExercise(){
   const min = Number(document.getElementById('x_min').value||0);
   if(!date){ toast('請選擇日期'); return; }
   if(min<=0){ toast('請輸入運動時長'); return; }
+  const type = document.getElementById('x_type').value;
+  const detailInput = document.getElementById('x_detail');
+  const detail = detailInput ? detailInput.value.trim() : '';
+  const needsDetail = type==='球類運動' || type==='其他';
+  if(needsDetail && !detail){ toast('請說明是什麼運動'); return; }
+  const exerciseLabel = detail ? `${type}・${detail}` : type;
   btn.disabled = true; btn.textContent = '儲存中…';
   try{
     await db.collection('entries').add({
       type:'exercise', uid: currentUser.uid, name: currentProfile.name,
-      date, exercise: document.getElementById('x_type').value,
+      date, exercise: exerciseLabel,
       exerciseMin: min,
       note: document.getElementById('x_note').value.trim(),
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
