@@ -43,7 +43,7 @@
   input,select,textarea{font-family:inherit;}
   a{color:var(--coral-deep);}
 
-  #root{max-width:560px;margin:0 auto;min-height:100vh;position:relative;padding-bottom:calc(84px + env(safe-area-inset-bottom));}
+  #root{max-width:560px;margin:0 auto;min-height:100vh;min-height:100svh;position:relative;padding-bottom:calc(120px + env(safe-area-inset-bottom));}
 
   .topbar{display:flex;align-items:baseline;justify-content:space-between;padding:22px 20px 14px;}
   .brand{display:flex;align-items:baseline;gap:8px;}
@@ -93,7 +93,13 @@
   .seg button.active.type-exercise{background:var(--gold);}
 
   .form-card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:18px;box-shadow:var(--shadow);}
-  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;min-width:0;}
+  .grid2 > *{min-width:0;}
+  .grid3 > *{min-width:0;}
+  @media (max-width:430px){
+    .grid2{grid-template-columns:1fr;}
+  }
+  input[type=date]{min-width:0;}
   .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
   .field.compact{margin-bottom:12px;}
   .field.compact label{font-size:11.5px;}
@@ -919,7 +925,7 @@ function renderDashPage(){
     </div>
 
     <div class="bar-block">
-      <h3>平均每餐熱量 <span class="ref-note"></span></h3>
+      <h3>平均每餐熱量 <span class="ref-note">┊建議約 600kcal</span></h3>
       ${names.map(n=>barRow(n, avgMeal(stats[n],'cal'), 'kcal', 900, 600)).join('')}
     </div>
 
