@@ -91,6 +91,11 @@
   }
   .color-swatch:active{transform:scale(0.92);}
   .color-swatch.selected{border-color:var(--ink);box-shadow:0 0 0 2px var(--surface), 0 0 0 4px var(--ink);}
+  .color-swatch.taken{opacity:.25;cursor:not-allowed;position:relative;}
+  .color-swatch.taken::after{
+    content:'';position:absolute;inset:0;border-radius:50%;
+    background:linear-gradient(45deg,transparent 46%,#2B2320 46%,#2B2320 54%,transparent 54%);
+  }
 
   .auth-wrap{min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:32px 24px;max-width:420px;margin:0 auto;}
   .auth-hero{margin-bottom:28px;}
@@ -343,6 +348,18 @@ function nameColor(name){
   return PALETTE[h % PALETTE.length];
 }
 function todayStr(){ return new Date().toISOString().slice(0,10); }
+async function pickAvailableColor(excludeUid){
+  try{
+    const snap = await db.collection('users').get();
+    const taken = new Set();
+    snap.forEach(d=>{
+      if(d.id===excludeUid) return;
+      if(d.data().color) taken.add(d.data().color);
+    });
+    for(const c of PALETTE){ if(!taken.has(c)) return c; }
+  }catch(e){ console.error(e); }
+  return PALETTE[0];
+}
 
 let currentUser = null;
 let currentProfile = null;
@@ -382,6 +399,12 @@ auth.onAuthStateChanged(async (user)=>{
       const doc = await db.collection('users').doc(user.uid).get();
       currentProfile = doc.exists ? doc.data() : {name:'未命名', email:user.email};
     }catch(e){ currentProfile = {name:'未命名', email:user.email}; }
+    if(currentProfile && !currentProfile.color){
+      pickAvailableColor(user.uid).then(color=>{
+        currentProfile.color = color;
+        db.collection('users').doc(user.uid).update({color}).catch(()=>{});
+      });
+    }
     listenEntries();
     listenUsers();
     listenPosts();
@@ -520,8 +543,9 @@ async function handleAuthSubmit(){
         return;
       }
       const cred = await auth.createUserWithEmailAndPassword(email, pass);
+      const autoColor = await pickAvailableColor(cred.user.uid);
       await db.collection('users').doc(cred.user.uid).set({
-        name, email, createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        name, email, color: autoColor, createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
     }
   }catch(e){
@@ -563,7 +587,12 @@ function openProfileModal(){
       <div class="field">
         <label>代表色</label>
         <div class="color-picker" id="colorPicker">
-          ${PALETTE.map(c=>`<button type="button" class="color-swatch ${c===initialColor?'selected':''}" data-color="${c}" style="background:${c}"></button>`).join('')}
+          ${PALETTE.map(c=>{
+            const takenBy = allUsers.find(u=>u.uid!==currentUser.uid && nameColor(u.name)===c);
+            const isMine = c===initialColor;
+            const disabled = takenBy && !isMine;
+            return `<button type="button" class="color-swatch ${isMine?'selected':''} ${disabled?'taken':''}" data-color="${c}" style="background:${c}" ${disabled?`disabled title="${esc(takenBy.name)} 已經用這個顏色了"`:''}></button>`;
+          }).join('')}
         </div>
       </div>
       <div class="submit-row"><button class="btn btn-primary" id="saveProfileBtn">儲存</button></div>
@@ -599,7 +628,7 @@ function openProfileModal(){
     reader.readAsDataURL(file);
   };
 
-  document.getElementById('colorPicker').querySelectorAll('.color-swatch').forEach(sw=>{
+  document.getElementById('colorPicker').querySelectorAll('.color-swatch:not([disabled])').forEach(sw=>{
     sw.onclick = ()=>{
       selectedColor = sw.dataset.color;
       document.getElementById('colorPicker').querySelectorAll('.color-swatch').forEach(s=>s.classList.remove('selected'));
