@@ -385,6 +385,7 @@ const MEAL_TYPES = ["早餐","午餐","晚餐","點心"];
 const EXERCISE_TYPES = ["跑步","重訓","瑜伽","游泳","騎車","快走/散步","球類運動","居家運動","其他"];
 const WATER_QUICK = [200,350,500];
 const INVITE_CODE = "20001112";
+const DEFAULT_AVATAR = "./favicon.png";
 const PALETTE = ["#D9663F","#3E6259","#C99A3E","#7D5BA6","#3E7CB1","#B5432F","#4C8C6B","#B65A82"];
 function nameColor(name){
   const u = allUsers.find(x=>x.name===name && x.color);
@@ -588,7 +589,7 @@ function listenUsers(){
 }
 function userAvatar(uid){
   const u = allUsers.find(x=>x.uid===uid);
-  return u && u.avatar ? u.avatar : null;
+  return u && u.avatar ? u.avatar : DEFAULT_AVATAR;
 }
 
 function listenEntries(){
@@ -734,7 +735,7 @@ function openProfileModal(){
       </div>
       <div class="avatar-edit">
         <div class="avatar-preview" id="avatarPreview">
-          ${currentProfile.avatar ? `<img src="${currentProfile.avatar}">` : `<span>${esc((currentProfile.name||'?').slice(0,1))}</span>`}
+          ${currentProfile.avatar ? `<img src="${currentProfile.avatar}">` : `<img src="${DEFAULT_AVATAR}">`}
         </div>
         <button class="btn-ghost" id="chooseAvatarBtn">上傳頭像</button>
         <input type="file" id="avatarInput" accept="image/*" style="display:none">
@@ -891,7 +892,7 @@ function renderFriendsModalBody(){
         ? `<div class="history-empty">還沒有好友,邀請一個吧</div>`
         : friendUsers.map(u=>`
             <div class="friend-row">
-              ${u.avatar ? `<img class="avatar-mini" src="${u.avatar}">` : `<span class="dot" style="background:${nameColor(u.name)}"></span>`}
+              ${u.avatar ? `<img class="avatar-mini" src="${u.avatar}">` : `<img class="avatar-mini" src="${DEFAULT_AVATAR}">`}
               <span class="friend-row-name">${esc(u.name)}</span>
               <button class="friend-remove" data-uid="${u.uid}" data-name="${esc(u.name)}">移除</button>
             </div>
@@ -1033,7 +1034,7 @@ function renderApp(){
           👥<span class="invite-badge ${pendingInvitesToMe.length===0?'hidden':''}" id="inviteBadge"></span>
         </button>
         <button class="profile-trigger" id="profileBtn">
-          ${currentProfile.avatar ? `<img class="avatar-mini" src="${currentProfile.avatar}">` : `<span class="dot" style="background:${nameColor(currentProfile.name)}"></span>`}
+          ${currentProfile.avatar ? `<img class="avatar-mini" src="${currentProfile.avatar}">` : `<img class="avatar-mini" src="${DEFAULT_AVATAR}">`}
           ${esc(currentProfile.name)}
         </button>
         <button id="logoutBtn">登出</button>
