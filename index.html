@@ -63,6 +63,26 @@
   }
   .profile-trigger:hover{color:var(--coral-deep);}
   .avatar-mini{width:20px;height:20px;border-radius:50%;object-fit:cover;flex-shrink:0;}
+  .icon-btn{
+    position:relative;background:none;border:none;font-size:17px;cursor:pointer;
+    padding:2px 4px;line-height:1;
+  }
+  .invite-badge{
+    position:absolute;top:-2px;right:-2px;width:9px;height:9px;border-radius:50%;
+    background:var(--coral);border:1.5px solid var(--parchment);
+  }
+  .friends-section{margin-bottom:18px;}
+  .friends-section:last-child{margin-bottom:0;}
+  .friends-section-title{font-size:11.5px;letter-spacing:1px;text-transform:uppercase;color:var(--ink-soft);font-weight:600;margin-bottom:10px;}
+  .invite-row{
+    display:flex;align-items:center;justify-content:space-between;gap:8px;
+    background:var(--gold-soft);border-radius:12px;padding:10px 12px;font-size:13px;margin-bottom:8px;
+  }
+  .invite-actions{display:flex;gap:6px;flex-shrink:0;}
+  .btn-accept{background:var(--teal);color:#fff;border:none;border-radius:16px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;}
+  .btn-decline{background:none;color:var(--ink-soft);border:1px solid var(--line);border-radius:16px;padding:6px 12px;font-size:12px;cursor:pointer;}
+  .friend-row{display:flex;align-items:center;gap:9px;padding:8px 0;font-size:13.5px;border-bottom:1px solid var(--line);}
+  .friend-row:last-child{border-bottom:none;}
 
   .modal-overlay{
     position:fixed;inset:0;background:rgba(43,35,32,.45);z-index:200;
@@ -410,6 +430,17 @@ let editingEntry = null;
 let expandedComments = {};
 let commentsCache = {};
 let commentUnsubs = {};
+let myFriends = new Set(); // uids of accepted friends
+let unsubFriends = null;
+let pendingInvitesToMe = [];
+let unsubInvites = null;
+
+function isFriendUid(uid){
+  return uid === (currentUser && currentUser.uid) || myFriends.has(uid);
+}
+function visibleEntries(){ return allEntries.filter(e=>isFriendUid(e.uid)); }
+function visiblePosts(){ return allPosts.filter(p=>isFriendUid(p.uid)); }
+function visibleUsers(){ return allUsers.filter(u=>isFriendUid(u.uid)); }
 
 const root = document.getElementById('root');
 
@@ -434,18 +465,69 @@ auth.onAuthStateChanged(async (user)=>{
         db.collection('users').doc(user.uid).update({color}).catch(()=>{});
       });
     }
+    ensureLegacyFriendsSeeded();
     listenEntries();
     listenUsers();
     listenPosts();
+    listenFriends();
+    listenInvites();
     renderApp();
   } else {
     if(unsubEntries){ unsubEntries(); unsubEntries=null; }
     if(unsubUsers){ unsubUsers(); unsubUsers=null; }
     if(unsubPosts){ unsubPosts(); unsubPosts=null; }
-    allEntries = []; allUsers = []; allPosts = [];
+    if(unsubFriends){ unsubFriends(); unsubFriends=null; }
+    if(unsubInvites){ unsubInvites(); unsubInvites=null; }
+    allEntries = []; allUsers = []; allPosts = []; myFriends = new Set(); pendingInvitesToMe = [];
     renderAuth();
   }
 });
+
+async function ensureLegacyFriendsSeeded(){
+  try{
+    const metaRef = db.collection('meta').doc('legacyFriendsSeeded');
+    const metaDoc = await metaRef.get();
+    if(metaDoc.exists) return;
+    const usersSnap = await db.collection('users').get();
+    const uids = usersSnap.docs.map(d=>d.id);
+    if(uids.length > 1){
+      const batch = db.batch();
+      for(let i=0;i<uids.length;i++){
+        for(let j=0;j<uids.length;j++){
+          if(i===j) continue;
+          const ref = db.collection('users').doc(uids[i]).collection('friends').doc(uids[j]);
+          batch.set(ref, {since: firebase.firestore.FieldValue.serverTimestamp()});
+        }
+      }
+      await batch.commit();
+    }
+    await metaRef.set({done:true, at: firebase.firestore.FieldValue.serverTimestamp()});
+  }catch(e){ console.error('legacy friend seed failed', e); }
+}
+
+function listenFriends(){
+  if(unsubFriends) unsubFriends();
+  unsubFriends = db.collection('users').doc(currentUser.uid).collection('friends')
+    .onSnapshot(snap=>{
+      myFriends = new Set(snap.docs.map(d=>d.id));
+      renderApp();
+    }, err=>console.error(err));
+}
+
+function listenInvites(){
+  if(unsubInvites) unsubInvites();
+  if(!currentUser.email) return;
+  unsubInvites = db.collection('invites')
+    .where('toEmail','==', currentUser.email)
+    .where('status','==','pending')
+    .onSnapshot(snap=>{
+      pendingInvitesToMe = snap.docs.map(d=>({id:d.id, ...d.data()}));
+      const badge = document.getElementById('inviteBadge');
+      if(badge) badge.classList.toggle('hidden', pendingInvitesToMe.length===0);
+      const overlay = document.getElementById('friendsModalOverlay');
+      if(overlay) renderFriendsModalBody();
+    }, err=>console.error(err));
+}
 
 function listenPosts(){
   if(unsubPosts) unsubPosts();
@@ -617,7 +699,7 @@ function openProfileModal(){
         <label>代表色</label>
         <div class="color-picker" id="colorPicker">
           ${PALETTE.map(c=>{
-            const takenBy = allUsers.find(u=>u.uid!==currentUser.uid && nameColor(u.name)===c);
+            const takenBy = visibleUsers().find(u=>u.uid!==currentUser.uid && nameColor(u.name)===c);
             const isMine = c===initialColor;
             const disabled = takenBy && !isMine;
             return `<button type="button" class="color-swatch ${isMine?'selected':''} ${disabled?'taken':''}" data-color="${c}" style="background:${c}" ${disabled?`disabled title="${esc(takenBy.name)} 已經用這個顏色了"`:''}></button>`;
@@ -715,6 +797,127 @@ async function syncNameAcrossData(uid, newName){
   }
 }
 
+/* ============ Friends & invites ============ */
+function openFriendsModal(){
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'friendsModalOverlay';
+  overlay.innerHTML = `
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3 class="display">好友</h3>
+        <button class="modal-close" id="closeFriendsModal">✕</button>
+      </div>
+      <div id="friendsModalBody"></div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  document.getElementById('closeFriendsModal').onclick = ()=>overlay.remove();
+  overlay.onclick = (ev)=>{ if(ev.target===overlay) overlay.remove(); };
+  renderFriendsModalBody();
+}
+
+function renderFriendsModalBody(){
+  const body = document.getElementById('friendsModalBody');
+  if(!body) return;
+  const friendUsers = allUsers.filter(u=>myFriends.has(u.uid));
+
+  body.innerHTML = `
+    ${pendingInvitesToMe.length>0 ? `
+      <div class="friends-section">
+        <div class="friends-section-title">邀請通知</div>
+        ${pendingInvitesToMe.map(inv=>`
+          <div class="invite-row">
+            <span>${esc(inv.fromName)} 想加你為好友</span>
+            <div class="invite-actions">
+              <button class="btn-accept" data-id="${inv.id}">接受</button>
+              <button class="btn-decline" data-id="${inv.id}">拒絕</button>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    ` : ''}
+    <div class="friends-section">
+      <div class="friends-section-title">我的好友${friendUsers.length? '（'+friendUsers.length+'）':''}</div>
+      ${friendUsers.length===0
+        ? `<div class="history-empty">還沒有好友,邀請一個吧</div>`
+        : friendUsers.map(u=>`
+            <div class="friend-row">
+              ${u.avatar ? `<img class="avatar-mini" src="${u.avatar}">` : `<span class="dot" style="background:${nameColor(u.name)}"></span>`}
+              <span>${esc(u.name)}</span>
+            </div>
+          `).join('')}
+    </div>
+    <div class="friends-section">
+      <div class="friends-section-title">邀請新朋友</div>
+      <div class="field compact">
+        <input type="email" id="inviteEmail" placeholder="對方的 Email">
+      </div>
+      <button class="btn btn-primary" id="sendInviteBtn">送出邀請</button>
+    </div>
+  `;
+
+  body.querySelectorAll('.btn-accept').forEach(b=>{
+    b.onclick = ()=>acceptInvite(b.dataset.id);
+  });
+  body.querySelectorAll('.btn-decline').forEach(b=>{
+    b.onclick = ()=>declineInvite(b.dataset.id);
+  });
+  document.getElementById('sendInviteBtn').onclick = sendInvite;
+}
+
+async function sendInvite(){
+  const btn = document.getElementById('sendInviteBtn');
+  const input = document.getElementById('inviteEmail');
+  const email = input.value.trim().toLowerCase();
+  if(!email){ toast('請輸入 Email'); return; }
+  if(email === (currentUser.email||'').toLowerCase()){ toast('不能邀請自己'); return; }
+  const already = allUsers.find(u=>myFriends.has(u.uid) && (u.email||'').toLowerCase()===email);
+  if(already){ toast('你們已經是好友了'); return; }
+  btn.disabled = true; btn.textContent = '送出中…';
+  try{
+    await db.collection('invites').add({
+      fromUid: currentUser.uid,
+      fromName: currentProfile.name,
+      toEmail: email,
+      status: 'pending',
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    toast('邀請已送出,等對方登入接受 💌');
+    input.value = '';
+  }catch(e){
+    console.error(e);
+    toast('送出失敗：'+e.message);
+  }
+  btn.disabled = false; btn.textContent = '送出邀請';
+}
+
+async function acceptInvite(inviteId){
+  const invite = pendingInvitesToMe.find(x=>x.id===inviteId);
+  if(!invite) return;
+  try{
+    const batch = db.batch();
+    const ref1 = db.collection('users').doc(invite.fromUid).collection('friends').doc(currentUser.uid);
+    const ref2 = db.collection('users').doc(currentUser.uid).collection('friends').doc(invite.fromUid);
+    batch.set(ref1, {since: firebase.firestore.FieldValue.serverTimestamp()});
+    batch.set(ref2, {since: firebase.firestore.FieldValue.serverTimestamp()});
+    batch.update(db.collection('invites').doc(inviteId), {status:'accepted'});
+    await batch.commit();
+    toast(`你和 ${invite.fromName} 現在是好友了 🎉`);
+  }catch(e){
+    console.error(e);
+    toast('操作失敗：'+e.message);
+  }
+}
+
+async function declineInvite(inviteId){
+  try{
+    await db.collection('invites').doc(inviteId).update({status:'declined'});
+  }catch(e){
+    toast('操作失敗：'+e.message);
+  }
+}
+
 function renderApp(){
   root.innerHTML = `
     <div class="topbar">
@@ -726,6 +929,9 @@ function renderApp(){
         </div>
       </div>
       <div class="who">
+        <button class="icon-btn" id="friendsBtn" title="好友">
+          👥<span class="invite-badge ${pendingInvitesToMe.length===0?'hidden':''}" id="inviteBadge"></span>
+        </button>
         <button class="profile-trigger" id="profileBtn">
           ${currentProfile.avatar ? `<img class="avatar-mini" src="${currentProfile.avatar}">` : `<span class="dot" style="background:${nameColor(currentProfile.name)}"></span>`}
           ${esc(currentProfile.name)}
@@ -743,6 +949,7 @@ function renderApp(){
   `;
   document.getElementById('logoutBtn').onclick = ()=>auth.signOut();
   document.getElementById('profileBtn').onclick = ()=>openProfileModal();
+  document.getElementById('friendsBtn').onclick = ()=>openFriendsModal();
   document.querySelectorAll('.tab').forEach(b=>{
     b.onclick = ()=>{ activeTab = b.dataset.tab; renderApp(); };
   });
@@ -1129,12 +1336,13 @@ async function submitExercise(){
 
 function renderHistoryPage(){
   const page = document.getElementById('page');
-  if(allEntries.length===0){
+  const myEntries = visibleEntries();
+  if(myEntries.length===0){
     page.innerHTML = `<div class="empty-state"><span class="ic">🍽️</span>還沒有任何紀錄<br>去「新增紀錄」寫下今天的第一筆吧</div>`;
     return;
   }
-  const rosterNames = allUsers.map(u=>u.name).filter(Boolean);
-  const entryNames = allEntries.map(e=>e.name).filter(Boolean);
+  const rosterNames = visibleUsers().map(u=>u.name).filter(Boolean);
+  const entryNames = myEntries.map(e=>e.name).filter(Boolean);
   const allNames = [...new Set([...rosterNames, ...entryNames])];
 
   const personBar = `
@@ -1149,7 +1357,7 @@ function renderHistoryPage(){
       ${historyFilterDate ? `<button id="clearFilter" class="filter-clear">清除</button>` : ''}
     </div>
   `;
-  let filtered = allEntries;
+  let filtered = myEntries;
   if(historyFilterDate) filtered = filtered.filter(e=>e.date===historyFilterDate);
   if(historyFilterPerson) filtered = filtered.filter(e=>e.name===historyFilterPerson);
 
@@ -1266,8 +1474,9 @@ async function deleteEntry(id){
 
 function renderDashPage(){
   const page = document.getElementById('page');
-  const rosterNames = allUsers.map(u=>u.name).filter(Boolean);
-  const entryNames = allEntries.map(e=>e.name).filter(Boolean);
+  const myEntries = visibleEntries();
+  const rosterNames = visibleUsers().map(u=>u.name).filter(Boolean);
+  const entryNames = myEntries.map(e=>e.name).filter(Boolean);
   const allNames = [...new Set([...rosterNames, ...entryNames])];
   if(allNames.length===0){
     page.innerHTML = `<div class="empty-state"><span class="ic">◎</span>還沒有資料可以統計<br>大家開始記錄後,這裡就會顯示比較圖表</div>`;
@@ -1276,15 +1485,15 @@ function renderDashPage(){
   if(dashPerson && !allNames.includes(dashPerson)) dashPerson = '';
   const names = dashPerson ? [dashPerson] : allNames;
 
-  let scopedEntries = allEntries;
+  let scopedEntries = myEntries;
   if(dashRange==='today'){
     const t = todayStr();
-    scopedEntries = allEntries.filter(e=>e.date === t);
+    scopedEntries = myEntries.filter(e=>e.date === t);
   } else if(dashRange==='7d'){
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate()-6);
     const cutoffStr = cutoff.toISOString().slice(0,10);
-    scopedEntries = allEntries.filter(e=>e.date >= cutoffStr);
+    scopedEntries = myEntries.filter(e=>e.date >= cutoffStr);
   }
   if(dashPerson) scopedEntries = scopedEntries.filter(e=>e.name===dashPerson);
 
@@ -1524,11 +1733,12 @@ async function submitPost(){
 function renderPostFeed(){
   const feed = document.getElementById('postFeed');
   if(!feed) return;
-  if(allPosts.length===0){
+  const myPosts = visiblePosts();
+  if(myPosts.length===0){
     feed.innerHTML = `<div class="empty-state"><span class="ic">💬</span>還沒有人留言<br>寫下第一句幫大家打氣的話吧</div>`;
     return;
   }
-  feed.innerHTML = allPosts.map(postCard).join('');
+  feed.innerHTML = myPosts.map(postCard).join('');
   feed.querySelectorAll('.like-btn').forEach(b=>{
     b.onclick = ()=>toggleLike(b.dataset.id, b.dataset.liked==='1');
   });
@@ -1538,7 +1748,7 @@ function renderPostFeed(){
   feed.querySelectorAll('.comment-toggle-btn').forEach(b=>{
     b.onclick = ()=>toggleComments(b.dataset.id);
   });
-  allPosts.forEach(p=>{
+  myPosts.forEach(p=>{
     if(expandedComments[p.id]){
       const el = document.getElementById('comments-'+p.id);
       if(el) bindCommentsSectionEvents(p.id, el);
