@@ -1601,21 +1601,22 @@ function renderDashPage(){
   const exEntries = scopedEntries.filter(e=>e.type==='exercise');
 
   const stats = {};
-  names.forEach(n=>stats[n] = {mealCount:0, cal:0, protein:0, carb:0, fat:0, cost:0, waterByDate:{}, exmin:0});
+  names.forEach(n=>stats[n] = {mealCount:0, cal:0, protein:0, carb:0, fat:0, cost:0, waterByDate:{}, proteinByDate:{}, exmin:0});
 
   mealEntries.forEach(e=>{
-    if(!stats[e.name]) stats[e.name] = {mealCount:0, cal:0, protein:0, carb:0, fat:0, cost:0, waterByDate:{}, exmin:0};
+    if(!stats[e.name]) stats[e.name] = {mealCount:0, cal:0, protein:0, carb:0, fat:0, cost:0, waterByDate:{}, proteinByDate:{}, exmin:0};
     const s = stats[e.name];
     s.mealCount++; s.cal += (e.calories||0); s.protein += (e.protein||0);
     s.carb += (e.carb||0); s.fat += (e.fat||0); s.cost += (e.price||0);
+    s.proteinByDate[e.date] = (s.proteinByDate[e.date]||0) + (e.protein||0);
   });
   waterEntries.forEach(e=>{
-    if(!stats[e.name]) stats[e.name] = {mealCount:0, cal:0, protein:0, carb:0, fat:0, cost:0, waterByDate:{}, exmin:0};
+    if(!stats[e.name]) stats[e.name] = {mealCount:0, cal:0, protein:0, carb:0, fat:0, cost:0, waterByDate:{}, proteinByDate:{}, exmin:0};
     const s = stats[e.name];
     s.waterByDate[e.date] = (s.waterByDate[e.date]||0) + (e.water||0);
   });
   exEntries.forEach(e=>{
-    if(!stats[e.name]) stats[e.name] = {mealCount:0, cal:0, protein:0, carb:0, fat:0, cost:0, waterByDate:{}, exmin:0};
+    if(!stats[e.name]) stats[e.name] = {mealCount:0, cal:0, protein:0, carb:0, fat:0, cost:0, waterByDate:{}, proteinByDate:{}, exmin:0};
     stats[e.name].exmin += (e.exerciseMin||0);
   });
 
@@ -1626,11 +1627,19 @@ function renderDashPage(){
     const total = days.reduce((sum,d)=>sum+s.waterByDate[d],0);
     return Math.round(total/days.length);
   };
+  const avgDailyProtein = (s)=>{
+    const days = Object.keys(s.proteinByDate);
+    if(days.length===0) return 0;
+    const total = days.reduce((sum,d)=>sum+s.proteinByDate[d],0);
+    return Math.round(total/days.length);
+  };
   const gridCols = `repeat(${Math.min(names.length,4)},1fr)`;
   const rangeLabel = dashRange==='today' ? '今天' : dashRange==='7d' ? '最近 7 天' : '全部';
   const calMax = Math.max(200, ...names.map(m=>avgMeal(stats[m],'cal')));
   const costMax = Math.max(100, ...names.map(m=>stats[m].cost));
-  const proteinMax = Math.max(20, ...names.map(m=>stats[m].protein));
+  const proteinMax = dashRange==='7d'
+    ? Math.max(20, ...names.map(m=>avgDailyProtein(stats[m])))
+    : Math.max(20, ...names.map(m=>stats[m].protein));
 
   page.innerHTML = `
     <div class="section-title">${dashPerson? esc(dashPerson)+' 的總覽' : '大家的總覽'}</div>
@@ -1651,6 +1660,13 @@ function renderDashPage(){
     <div class="bar-block">
       <h3>今日蛋白質總量</h3>
       ${names.map(n=>barRow(n, stats[n].protein, 'g', proteinMax)).join('')}
+    </div>
+    ` : ''}
+
+    ${dashRange==='7d' ? `
+    <div class="bar-block">
+      <h3>平均每天蛋白質</h3>
+      ${names.map(n=>barRow(n, avgDailyProtein(stats[n]), 'g', proteinMax)).join('')}
     </div>
     ` : ''}
 
