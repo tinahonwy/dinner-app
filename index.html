@@ -433,6 +433,8 @@ let commentUnsubs = {};
 let myFriends = new Set(); // uids of accepted friends
 let unsubFriends = null;
 let pendingInvitesToMe = [];
+let sentInvites = [];
+let unsubSentInvites = null;
 let unsubInvites = null;
 
 function isFriendUid(uid){
@@ -464,6 +466,7 @@ auth.onAuthStateChanged(async (user)=>{
     listenPosts();
     listenFriends();
     listenInvites();
+    listenSentInvites();
   } else {
     if(unsubProfile){ unsubProfile(); unsubProfile=null; }
     if(unsubEntries){ unsubEntries(); unsubEntries=null; }
@@ -471,7 +474,8 @@ auth.onAuthStateChanged(async (user)=>{
     if(unsubPosts){ unsubPosts(); unsubPosts=null; }
     if(unsubFriends){ unsubFriends(); unsubFriends=null; }
     if(unsubInvites){ unsubInvites(); unsubInvites=null; }
-    allEntries = []; allUsers = []; allPosts = []; myFriends = new Set(); pendingInvitesToMe = [];
+    if(unsubSentInvites){ unsubSentInvites(); unsubSentInvites=null; }
+    allEntries = []; allUsers = []; allPosts = []; myFriends = new Set(); pendingInvitesToMe = []; sentInvites = [];
     renderAuth();
   }
 });
@@ -535,6 +539,18 @@ function listenInvites(){
       pendingInvitesToMe = snap.docs.map(d=>({id:d.id, ...d.data()}));
       const badge = document.getElementById('inviteBadge');
       if(badge) badge.classList.toggle('hidden', pendingInvitesToMe.length===0);
+      const overlay = document.getElementById('friendsModalOverlay');
+      if(overlay) renderFriendsModalBody();
+    }, err=>console.error(err));
+}
+
+function listenSentInvites(){
+  if(unsubSentInvites) unsubSentInvites();
+  unsubSentInvites = db.collection('invites')
+    .where('fromUid','==', currentUser.uid)
+    .where('status','==','pending')
+    .onSnapshot(snap=>{
+      sentInvites = snap.docs.map(d=>({id:d.id, ...d.data()}));
       const overlay = document.getElementById('friendsModalOverlay');
       if(overlay) renderFriendsModalBody();
     }, err=>console.error(err));
@@ -862,17 +878,33 @@ function renderFriendsModalBody(){
     <div class="friends-section">
       <div class="friends-section-title">邀請新朋友</div>
       <div class="field compact">
-        <input type="email" id="inviteEmail" placeholder="對方的 Email">
+        <input type="email" id="inviteEmail" placeholder="對方的 Email（必須已經註冊過）">
       </div>
       <button class="btn btn-primary" id="sendInviteBtn">送出邀請</button>
     </div>
+    ${sentInvites.length>0 ? `
+      <div class="friends-section">
+        <div class="friends-section-title">已送出、等待中的邀請</div>
+        ${sentInvites.map(inv=>`
+          <div class="invite-row">
+            <span>${esc(inv.toEmail)}</span>
+            <div class="invite-actions">
+              <button class="btn-decline" data-revoke="${inv.id}">收回</button>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    ` : ''}
   `;
 
   body.querySelectorAll('.btn-accept').forEach(b=>{
     b.onclick = ()=>acceptInvite(b.dataset.id);
   });
-  body.querySelectorAll('.btn-decline').forEach(b=>{
+  body.querySelectorAll('.btn-decline[data-id]').forEach(b=>{
     b.onclick = ()=>declineInvite(b.dataset.id);
+  });
+  body.querySelectorAll('.btn-decline[data-revoke]').forEach(b=>{
+    b.onclick = ()=>revokeInvite(b.dataset.revoke);
   });
   document.getElementById('sendInviteBtn').onclick = sendInvite;
 }
@@ -885,8 +917,17 @@ async function sendInvite(){
   if(email === (currentUser.email||'').toLowerCase()){ toast('不能邀請自己'); return; }
   const already = allUsers.find(u=>myFriends.has(u.uid) && (u.email||'').toLowerCase()===email);
   if(already){ toast('你們已經是好友了'); return; }
-  btn.disabled = true; btn.textContent = '送出中…';
+  const alreadySent = sentInvites.find(inv=>inv.toEmail===email);
+  if(alreadySent){ toast('已經邀請過這個 Email 了,還在等待對方接受'); return; }
+  btn.disabled = true; btn.textContent = '確認中…';
   try{
+    const userSnap = await db.collection('users').where('email','==', email).limit(1).get();
+    if(userSnap.empty){
+      toast('這個 Email 還沒有註冊帳號,請先請對方註冊再邀請');
+      btn.disabled = false; btn.textContent = '送出邀請';
+      return;
+    }
+    btn.textContent = '送出中…';
     await db.collection('invites').add({
       fromUid: currentUser.uid,
       fromName: currentProfile.name,
@@ -924,6 +965,15 @@ async function acceptInvite(inviteId){
 async function declineInvite(inviteId){
   try{
     await db.collection('invites').doc(inviteId).update({status:'declined'});
+  }catch(e){
+    toast('操作失敗：'+e.message);
+  }
+}
+
+async function revokeInvite(inviteId){
+  try{
+    await db.collection('invites').doc(inviteId).delete();
+    toast('已收回邀請');
   }catch(e){
     toast('操作失敗：'+e.message);
   }
