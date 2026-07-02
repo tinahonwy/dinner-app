@@ -748,10 +748,8 @@ function openProfileModal(){
         <label>代表色</label>
         <div class="color-picker" id="colorPicker">
           ${PALETTE.map(c=>{
-            const takenBy = visibleUsers().find(u=>u.uid!==currentUser.uid && nameColor(u.name)===c);
             const isMine = c===initialColor;
-            const disabled = takenBy && !isMine;
-            return `<button type="button" class="color-swatch ${isMine?'selected':''} ${disabled?'taken':''}" data-color="${c}" style="background:${c}" ${disabled?`disabled title="${esc(takenBy.name)} 已經用這個顏色了"`:''}></button>`;
+            return `<button type="button" class="color-swatch ${isMine?'selected':''}" data-color="${c}" style="background:${c}"></button>`;
           }).join('')}
         </div>
       </div>
