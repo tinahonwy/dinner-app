@@ -347,7 +347,13 @@ function nameColor(name){
   for(let i=0;i<(name||'').length;i++){ h = (h*31 + name.charCodeAt(i)) % 997; }
   return PALETTE[h % PALETTE.length];
 }
-function todayStr(){ return new Date().toISOString().slice(0,10); }
+function todayStr(){
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
 async function pickAvailableColor(excludeUid){
   try{
     const snap = await db.collection('users').get();
