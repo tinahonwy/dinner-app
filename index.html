@@ -83,6 +83,9 @@
   .btn-decline{background:none;color:var(--ink-soft);border:1px solid var(--line);border-radius:16px;padding:6px 12px;font-size:12px;cursor:pointer;}
   .friend-row{display:flex;align-items:center;gap:9px;padding:8px 0;font-size:13.5px;border-bottom:1px solid var(--line);}
   .friend-row:last-child{border-bottom:none;}
+  .friend-row-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .friend-remove{background:none;border:none;color:#C7B9AC;font-size:11.5px;cursor:pointer;text-decoration:underline;flex-shrink:0;}
+  .friend-remove:hover{color:var(--err);}
 
   .modal-overlay{
     position:fixed;inset:0;background:rgba(43,35,32,.45);z-index:200;
@@ -381,6 +384,7 @@ const db = firebase.firestore();
 const MEAL_TYPES = ["早餐","午餐","晚餐","點心"];
 const EXERCISE_TYPES = ["跑步","重訓","瑜伽","游泳","騎車","快走/散步","球類運動","居家運動","其他"];
 const WATER_QUICK = [200,350,500];
+const INVITE_CODE = "20001112";
 const PALETTE = ["#D9663F","#3E6259","#C99A3E","#7D5BA6","#3E7CB1","#B5432F","#4C8C6B","#B65A82"];
 function nameColor(name){
   const u = allUsers.find(x=>x.name===name && x.color);
@@ -500,23 +504,30 @@ function listenProfile(user){
 
 async function ensureLegacyFriendsSeeded(){
   try{
-    const metaRef = db.collection('meta').doc('legacyFriendsSeeded');
-    const metaDoc = await metaRef.get();
-    if(metaDoc.exists) return;
-    const usersSnap = await db.collection('users').get();
-    const uids = usersSnap.docs.map(d=>d.id);
-    if(uids.length > 1){
+    const snapRef = db.collection('meta').doc('legacyUserIds');
+    let legacyIds;
+    const snapDoc = await snapRef.get();
+    if(snapDoc.exists){
+      legacyIds = snapDoc.data().uids || [];
+    } else {
+      const usersSnap = await db.collection('users').get();
+      legacyIds = usersSnap.docs.map(d=>d.id);
+      await snapRef.set({uids: legacyIds, at: firebase.firestore.FieldValue.serverTimestamp()});
+    }
+    if(!legacyIds.includes(currentUser.uid)) return; // 不是最初那批人，不自動加好友
+    const flagRef = db.collection('meta').doc('legacySeedDone_' + currentUser.uid);
+    const flagDoc = await flagRef.get();
+    if(flagDoc.exists) return;
+    const others = legacyIds.filter(uid=>uid!==currentUser.uid);
+    if(others.length>0){
       const batch = db.batch();
-      for(let i=0;i<uids.length;i++){
-        for(let j=0;j<uids.length;j++){
-          if(i===j) continue;
-          const ref = db.collection('users').doc(uids[i]).collection('friends').doc(uids[j]);
-          batch.set(ref, {since: firebase.firestore.FieldValue.serverTimestamp()});
-        }
-      }
+      others.forEach(otherUid=>{
+        batch.set(db.collection('users').doc(currentUser.uid).collection('friends').doc(otherUid), {since: firebase.firestore.FieldValue.serverTimestamp()});
+        batch.set(db.collection('users').doc(otherUid).collection('friends').doc(currentUser.uid), {since: firebase.firestore.FieldValue.serverTimestamp()});
+      });
       await batch.commit();
     }
-    await metaRef.set({done:true, at: firebase.firestore.FieldValue.serverTimestamp()});
+    await flagRef.set({done:true, at: firebase.firestore.FieldValue.serverTimestamp()});
   }catch(e){ console.error('legacy friend seed failed', e); }
 }
 
@@ -610,6 +621,10 @@ function renderAuth(){
             <label>你是誰？</label>
             <input type="text" id="regName" placeholder="輸入你的名字或暱稱" maxlength="20">
           </div>
+          <div class="field">
+            <label>邀請碼</label>
+            <input type="text" id="regInviteCode" placeholder="輸入邀請碼">
+          </div>
         </div>
         <div class="field">
           <label>Email</label>
@@ -677,6 +692,12 @@ async function handleAuthSubmit(){
       const name = document.getElementById('regName').value.trim();
       if(!name){
         errBox.innerHTML = `<div class="auth-err">請輸入你的名字或暱稱</div>`;
+        btn.disabled = false; btn.textContent = btnLabel;
+        return;
+      }
+      const inviteCode = document.getElementById('regInviteCode').value.trim();
+      if(inviteCode !== INVITE_CODE){
+        errBox.innerHTML = `<div class="auth-err">邀請碼不正確</div>`;
         btn.disabled = false; btn.textContent = btnLabel;
         return;
       }
@@ -871,7 +892,8 @@ function renderFriendsModalBody(){
         : friendUsers.map(u=>`
             <div class="friend-row">
               ${u.avatar ? `<img class="avatar-mini" src="${u.avatar}">` : `<span class="dot" style="background:${nameColor(u.name)}"></span>`}
-              <span>${esc(u.name)}</span>
+              <span class="friend-row-name">${esc(u.name)}</span>
+              <button class="friend-remove" data-uid="${u.uid}" data-name="${esc(u.name)}">移除</button>
             </div>
           `).join('')}
     </div>
@@ -907,6 +929,9 @@ function renderFriendsModalBody(){
     b.onclick = ()=>revokeInvite(b.dataset.revoke);
   });
   document.getElementById('sendInviteBtn').onclick = sendInvite;
+  body.querySelectorAll('.friend-remove').forEach(b=>{
+    b.onclick = ()=>removeFriend(b.dataset.uid, b.dataset.name);
+  });
 }
 
 async function sendInvite(){
@@ -975,6 +1000,20 @@ async function revokeInvite(inviteId){
     await db.collection('invites').doc(inviteId).delete();
     toast('已收回邀請');
   }catch(e){
+    toast('操作失敗：'+e.message);
+  }
+}
+
+async function removeFriend(otherUid, otherName){
+  if(!confirm(`確定要把「${otherName}」從好友移除嗎？之後就不會再看到彼此的紀錄了。`)) return;
+  try{
+    const batch = db.batch();
+    batch.delete(db.collection('users').doc(currentUser.uid).collection('friends').doc(otherUid));
+    batch.delete(db.collection('users').doc(otherUid).collection('friends').doc(currentUser.uid));
+    await batch.commit();
+    toast('已移除好友');
+  }catch(e){
+    console.error(e);
     toast('操作失敗：'+e.message);
   }
 }
