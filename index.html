@@ -1635,7 +1635,7 @@ function renderDashPage(){
     const days = Object.keys(byDate);
     if(days.length===0) return 0;
     const total = days.reduce((sum,d)=>sum+byDate[d],0);
-    return Math.round(total/days.length);
+    return total/days.length;
   };
   const gridCols = `repeat(${Math.min(names.length,4)},1fr)`;
   const rangeLabel = dashRange==='today' ? '今天' : dashRange==='7d' ? '最近 7 天' : '全部';
@@ -1650,7 +1650,7 @@ function renderDashPage(){
     return `
       <div class="bar-block">
         <h3>${label}</h3>
-        ${names.map((n,i)=>barRow(n, vals[i], 'g', max)).join('')}
+        ${names.map((n,i)=>barRow(n, vals[i], 'g', max, null, 2)).join('')}
       </div>
     `;
   };
@@ -1742,13 +1742,14 @@ function renderExGroups(exEntries){
   `).join('') + `</div>`;
 }
 
-function barRow(name, val, unit, max, refTarget){
+function barRow(name, val, unit, max, refTarget, decimals){
   const pct = max>0 ? Math.min(100, Math.round(val/max*100)) : 0;
   const refPct = refTarget ? Math.min(100, Math.round(refTarget/max*100)) : null;
   const hasData = val>0;
+  const displayVal = decimals ? Number(val).toFixed(decimals) : val;
   return `
     <div class="bar-row">
-      <div class="bar-head"><span class="name">${esc(name)}</span><span class="val">${hasData? val+unit : '– 尚無紀錄'}</span></div>
+      <div class="bar-head"><span class="name">${esc(name)}</span><span class="val">${hasData? displayVal+unit : '– 尚無紀錄'}</span></div>
       <div class="bar-track">
         ${refPct!==null ? `<div class="bar-ref" style="left:${refPct}%"></div>` : ''}
         <div class="bar-fill ${hasData?'':'empty'}" style="width:${pct}%;background:${nameColor(name)}"></div>
