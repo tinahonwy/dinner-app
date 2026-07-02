@@ -452,27 +452,20 @@ function toast(msg){
 }
 function esc(s){return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 
+let unsubProfile = null;
+
 auth.onAuthStateChanged(async (user)=>{
   currentUser = user;
   if(user){
-    try{
-      const doc = await db.collection('users').doc(user.uid).get();
-      currentProfile = doc.exists ? doc.data() : {name:'未命名', email:user.email};
-    }catch(e){ currentProfile = {name:'未命名', email:user.email}; }
-    if(currentProfile && !currentProfile.color){
-      pickAvailableColor(user.uid).then(color=>{
-        currentProfile.color = color;
-        db.collection('users').doc(user.uid).update({color}).catch(()=>{});
-      });
-    }
+    listenProfile(user);
     ensureLegacyFriendsSeeded();
     listenEntries();
     listenUsers();
     listenPosts();
     listenFriends();
     listenInvites();
-    renderApp();
   } else {
+    if(unsubProfile){ unsubProfile(); unsubProfile=null; }
     if(unsubEntries){ unsubEntries(); unsubEntries=null; }
     if(unsubUsers){ unsubUsers(); unsubUsers=null; }
     if(unsubPosts){ unsubPosts(); unsubPosts=null; }
@@ -482,6 +475,24 @@ auth.onAuthStateChanged(async (user)=>{
     renderAuth();
   }
 });
+
+function listenProfile(user){
+  if(unsubProfile) unsubProfile();
+  unsubProfile = db.collection('users').doc(user.uid).onSnapshot(doc=>{
+    currentProfile = doc.exists ? doc.data() : {name:'未命名', email:user.email};
+    if(currentProfile && !currentProfile.color){
+      pickAvailableColor(user.uid).then(color=>{
+        db.collection('users').doc(user.uid).update({color}).catch(()=>{});
+      });
+    }
+    renderApp();
+  }, err=>{
+    console.error(err);
+    currentProfile = {name:'未命名', email:user.email};
+    renderApp();
+  });
+}
+
 
 async function ensureLegacyFriendsSeeded(){
   try{
