@@ -1701,7 +1701,7 @@ function renderDashPage(){
 
     <div class="bar-block">
       <h3>${calTitle}</h3>
-      ${names.map((n,i)=>barRow(n, calVals[i], 'kcal', calMax)).join('')}
+      ${names.map((n,i)=>barRow(n, calVals[i], 'kcal', calMax, null, 0)).join('')}
     </div>
 
     <div class="bar-block">
@@ -1711,7 +1711,7 @@ function renderDashPage(){
 
     <div class="bar-block">
       <h3>餐費花費</h3>
-      ${names.map(n=>barRow(n, stats[n].cost, ' 元', costMax)).join('')}
+      ${names.map(n=>barRow(n, stats[n].cost, ' 元', costMax, null, 0)).join('')}
     </div>
 
     <div class="bar-block">
