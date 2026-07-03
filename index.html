@@ -1776,7 +1776,7 @@ function barRow(name, val, unit, max, refTarget, decimals){
   const pct = max>0 ? Math.min(100, Math.round(val/max*100)) : 0;
   const refPct = refTarget ? Math.min(100, Math.round(refTarget/max*100)) : null;
   const hasData = val>0;
-  const displayVal = decimals ? Number(val).toFixed(decimals) : val;
+  const displayVal = (decimals!==undefined && decimals!==null) ? Number(val).toFixed(decimals) : val;
   return `
     <div class="bar-row">
       <div class="bar-head"><span class="name">${esc(name)}</span><span class="val">${hasData? displayVal+unit : '– 尚無紀錄'}</span></div>
