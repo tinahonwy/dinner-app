@@ -1115,6 +1115,7 @@ function renderMealForm(){
         <div class="field compact"><label>膳食纖維 g</label><input type="number" id="f_fiber" min="0" value="${e&&e.fiber?e.fiber:''}"></div>
         <div class="field compact"><label>糖 g</label><input type="number" id="f_sugar" min="0" value="${e&&e.sugar?e.sugar:''}"></div>
       </div>
+      <div class="field compact"><label>鈉 mg</label><input type="number" id="f_sodium" min="0" placeholder="例如 450" value="${e&&e.sodium?e.sodium:''}"></div>
       <div class="field compact"><label>照片</label>
         <div class="photo-box ${photoDataUrl?'has-img':''}" id="photoBox">
           ${photoDataUrl ? `<img src="${photoDataUrl}"><button class="photo-remove" id="removePhoto">✕</button>` : `<div class="placeholder"><span class="ic">📷</span>點一下拍照或選擇照片</div>`}
@@ -1156,6 +1157,7 @@ function renderMealForm(){
           document.getElementById('f_fat').value = match.fat || '';
           document.getElementById('f_fiber').value = match.fiber || '';
           document.getElementById('f_sugar').value = match.sugar || '';
+          document.getElementById('f_sodium').value = match.sodium || '';
           document.getElementById('f_price').value = match.price || '';
           document.getElementById('f_qty').value = match.qty || '';
           panel.classList.add('hidden');
@@ -1348,7 +1350,7 @@ async function submitMeal(){
     date, mealType: document.getElementById('f_mealtype').value,
     dinner,
     calories: num('f_cal'), protein: num('f_protein'), carb: num('f_carb'),
-    fat: num('f_fat'), fiber: num('f_fiber'), sugar: num('f_sugar'),
+    fat: num('f_fat'), fiber: num('f_fiber'), sugar: num('f_sugar'), sodium: num('f_sodium'),
     price: num('f_price'),
     qty: num('f_qty'),
     note: document.getElementById('f_note').value.trim(),
