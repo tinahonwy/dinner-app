@@ -1606,7 +1606,7 @@ function renderDashPage(){
   const waterEntries = scopedEntries.filter(e=>e.type==='water');
   const exEntries = scopedEntries.filter(e=>e.type==='exercise');
 
-  const blankStat = ()=>({mealCount:0, cal:0, protein:0, carb:0, fat:0, cost:0, waterByDate:{}, proteinByDate:{}, carbByDate:{}, fatByDate:{}, calByDate:{}, exmin:0});
+  const blankStat = ()=>({mealCount:0, cal:0, protein:0, carb:0, fat:0, sodium:0, cost:0, waterByDate:{}, proteinByDate:{}, carbByDate:{}, fatByDate:{}, sodiumByDate:{}, calByDate:{}, exmin:0});
   const stats = {};
   names.forEach(n=>stats[n] = blankStat());
 
@@ -1615,9 +1615,11 @@ function renderDashPage(){
     const s = stats[e.name];
     s.mealCount++; s.cal += (e.calories||0); s.protein += (e.protein||0);
     s.carb += (e.carb||0); s.fat += (e.fat||0); s.cost += (e.price||0);
+    s.sodium += (e.sodium||0);
     s.proteinByDate[e.date] = (s.proteinByDate[e.date]||0) + (e.protein||0);
     s.carbByDate[e.date] = (s.carbByDate[e.date]||0) + (e.carb||0);
     s.fatByDate[e.date] = (s.fatByDate[e.date]||0) + (e.fat||0);
+    s.sodiumByDate[e.date] = (s.sodiumByDate[e.date]||0) + (e.sodium||0);
     s.calByDate[e.date] = (s.calByDate[e.date]||0) + (e.calories||0);
   });
   waterEntries.forEach(e=>{
@@ -1651,16 +1653,19 @@ function renderDashPage(){
   const calMax = Math.max(200, ...calVals);
   const calTitle = dashRange==='today' ? '今日總熱量' : dashRange==='custom' ? `${rangeLabel} 總熱量` : '平均每天總熱量';
   const costMax = Math.max(100, ...names.map(m=>stats[m].cost));
-  const macroMax = (macroKey)=> dashRange==='7d'
-    ? Math.max(15, ...names.map(m=>avgDailyMacro(stats[m], macroKey)))
-    : Math.max(15, ...names.map(m=>stats[m][macroKey]));
-  const macroBlock = (label, macroKey)=>{
+  const macroMax = (macroKey, floor)=> dashRange==='7d'
+    ? Math.max(floor, ...names.map(m=>avgDailyMacro(stats[m], macroKey)))
+    : Math.max(floor, ...names.map(m=>stats[m][macroKey]));
+  const macroBlock = (label, macroKey, unit, decimals, floor)=>{
+    unit = unit || 'g';
+    decimals = decimals===undefined ? 2 : decimals;
+    floor = floor===undefined ? 15 : floor;
     const vals = names.map(n=> dashRange==='7d' ? avgDailyMacro(stats[n], macroKey) : stats[n][macroKey]);
-    const max = macroMax(macroKey);
+    const max = macroMax(macroKey, floor);
     return `
       <div class="bar-block">
         <h3>${label}</h3>
-        ${names.map((n,i)=>barRow(n, vals[i], 'g', max, null, 2)).join('')}
+        ${names.map((n,i)=>barRow(n, vals[i], unit, max, null, decimals)).join('')}
       </div>
     `;
   };
@@ -1691,6 +1696,7 @@ function renderDashPage(){
     ${macroBlock('蛋白質 (g)', 'protein')}
     ${macroBlock('碳水化合物 (g)', 'carb')}
     ${macroBlock('脂肪 (g)', 'fat')}
+    ${macroBlock('鈉 (mg)', 'sodium', 'mg', 0, 100)}
     ` : ''}
 
     <div class="bar-block">
