@@ -1604,7 +1604,7 @@ function renderDashPage(){
   const waterEntries = scopedEntries.filter(e=>e.type==='water');
   const exEntries = scopedEntries.filter(e=>e.type==='exercise');
 
-  const blankStat = ()=>({mealCount:0, cal:0, protein:0, carb:0, fat:0, cost:0, waterByDate:{}, proteinByDate:{}, carbByDate:{}, fatByDate:{}, exmin:0});
+  const blankStat = ()=>({mealCount:0, cal:0, protein:0, carb:0, fat:0, cost:0, waterByDate:{}, proteinByDate:{}, carbByDate:{}, fatByDate:{}, calByDate:{}, exmin:0});
   const stats = {};
   names.forEach(n=>stats[n] = blankStat());
 
@@ -1616,6 +1616,7 @@ function renderDashPage(){
     s.proteinByDate[e.date] = (s.proteinByDate[e.date]||0) + (e.protein||0);
     s.carbByDate[e.date] = (s.carbByDate[e.date]||0) + (e.carb||0);
     s.fatByDate[e.date] = (s.fatByDate[e.date]||0) + (e.fat||0);
+    s.calByDate[e.date] = (s.calByDate[e.date]||0) + (e.calories||0);
   });
   waterEntries.forEach(e=>{
     if(!stats[e.name]) stats[e.name] = blankStat();
@@ -1643,7 +1644,10 @@ function renderDashPage(){
   };
   const gridCols = `repeat(${Math.min(names.length,4)},1fr)`;
   const rangeLabel = dashRange==='today' ? '今天' : dashRange==='7d' ? '最近 7 天' : dashRange==='custom' ? formatDateShort(dashCustomDate||todayStr()) : '全部';
-  const calMax = Math.max(200, ...names.map(m=>avgMeal(stats[m],'cal')));
+  const isDailyTotalMode = dashRange==='today' || dashRange==='custom';
+  const calVals = names.map(n=> isDailyTotalMode ? stats[n].cal : avgDailyMacro(stats[n], 'cal'));
+  const calMax = Math.max(200, ...calVals);
+  const calTitle = dashRange==='today' ? '今日總熱量' : dashRange==='custom' ? `${rangeLabel} 總熱量` : '平均每天總熱量';
   const costMax = Math.max(100, ...names.map(m=>stats[m].cost));
   const macroMax = (macroKey)=> dashRange==='7d'
     ? Math.max(15, ...names.map(m=>avgDailyMacro(stats[m], macroKey)))
@@ -1688,8 +1692,8 @@ function renderDashPage(){
     ` : ''}
 
     <div class="bar-block">
-      <h3>平均每餐熱量</h3>
-      ${names.map(n=>barRow(n, avgMeal(stats[n],'cal'), 'kcal', calMax)).join('')}
+      <h3>${calTitle}</h3>
+      ${names.map((n,i)=>barRow(n, calVals[i], 'kcal', calMax)).join('')}
     </div>
 
     <div class="bar-block">
