@@ -426,7 +426,8 @@ let photoDataUrl = null;
 let authMode = 'login';
 let historyFilterDate = '';
 let historyFilterPerson = '';
-let dashRange = '7d'; // '7d' | 'all'
+let dashRange = '7d'; // 'today' | '7d' | 'all' | 'custom'
+let dashCustomDate = '';
 let dashPerson = ''; // '' = all, otherwise a specific name
 let allPosts = [];
 let unsubPosts = null;
@@ -1593,6 +1594,9 @@ function renderDashPage(){
     cutoff.setDate(cutoff.getDate()-6);
     const cutoffStr = cutoff.toISOString().slice(0,10);
     scopedEntries = myEntries.filter(e=>e.date >= cutoffStr);
+  } else if(dashRange==='custom'){
+    const d = dashCustomDate || todayStr();
+    scopedEntries = myEntries.filter(e=>e.date === d);
   }
   if(dashPerson) scopedEntries = scopedEntries.filter(e=>e.name===dashPerson);
 
@@ -1638,7 +1642,7 @@ function renderDashPage(){
     return total/days.length;
   };
   const gridCols = `repeat(${Math.min(names.length,4)},1fr)`;
-  const rangeLabel = dashRange==='today' ? '今天' : dashRange==='7d' ? '最近 7 天' : '全部';
+  const rangeLabel = dashRange==='today' ? '今天' : dashRange==='7d' ? '最近 7 天' : dashRange==='custom' ? formatDateShort(dashCustomDate||todayStr()) : '全部';
   const calMax = Math.max(200, ...names.map(m=>avgMeal(stats[m],'cal')));
   const costMax = Math.max(100, ...names.map(m=>stats[m].cost));
   const macroMax = (macroKey)=> dashRange==='7d'
@@ -1665,13 +1669,19 @@ function renderDashPage(){
       <button class="${dashRange==='today'?'active':''}" data-range="today">今天</button>
       <button class="${dashRange==='7d'?'active':''}" data-range="7d">最近 7 天</button>
       <button class="${dashRange==='all'?'active':''}" data-range="all">全部紀錄</button>
+      <button class="${dashRange==='custom'?'active':''}" data-range="custom">選日期</button>
     </div>
+    ${dashRange==='custom' ? `
+      <div class="date-wrap" style="margin-bottom:16px;box-shadow:var(--shadow);">
+        <input type="date" id="dashCustomDateInput" value="${dashCustomDate||todayStr()}">
+      </div>
+    ` : ''}
     <div class="plate-row">
       ${names.map(n=>plateSvg(n, stats[n])).join('')}
     </div>
 
-    ${(dashRange==='today'||dashRange==='7d') ? `
-    <div class="section-title">${dashRange==='today'?'今日三大營養素攝取':'平均每天三大營養素'}</div>
+    ${(dashRange==='today'||dashRange==='7d'||dashRange==='custom') ? `
+    <div class="section-title">${dashRange==='7d'?'平均每天三大營養素':`${rangeLabel} 三大營養素攝取`}</div>
     ${macroBlock('蛋白質 (g)', 'protein')}
     ${macroBlock('碳水化合物 (g)', 'carb')}
     ${macroBlock('脂肪 (g)', 'fat')}
@@ -1715,8 +1725,16 @@ function renderDashPage(){
     </div>
   `;
   page.querySelectorAll('.dash-range button').forEach(b=>{
-    b.onclick = ()=>{ dashRange = b.dataset.range; renderDashPage(); };
+    b.onclick = ()=>{
+      dashRange = b.dataset.range;
+      if(dashRange==='custom' && !dashCustomDate) dashCustomDate = todayStr();
+      renderDashPage();
+    };
   });
+  const customDateInput = document.getElementById('dashCustomDateInput');
+  if(customDateInput){
+    customDateInput.onchange = ()=>{ dashCustomDate = customDateInput.value || todayStr(); renderDashPage(); };
+  }
   page.querySelectorAll('.person-filter .chip').forEach(b=>{
     b.onclick = ()=>{ dashPerson = b.dataset.person; renderDashPage(); };
   });
