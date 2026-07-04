@@ -455,6 +455,7 @@ let editingEntry = null;
 let mealDraft = {};
 let waterDraft = {};
 let exerciseDraft = {};
+let boardDraft = {};
 let expandedComments = {};
 let commentsCache = {};
 let commentUnsubs = {};
@@ -1079,10 +1080,16 @@ function captureExerciseDraft(){
     note: document.getElementById('x_note').value
   };
 }
+function captureBoardDraft(){
+  const el = document.getElementById('post_text');
+  if(!el) return;
+  boardDraft = { text: el.value, photo: boardPhotoDataUrl };
+}
 function captureCurrentFormDraft(){
   captureMealDraft();
   captureWaterDraft();
   captureExerciseDraft();
+  captureBoardDraft();
 }
 
 function renderApp(){
@@ -1119,7 +1126,7 @@ function renderApp(){
   document.getElementById('friendsBtn').onclick = ()=>openFriendsModal();
   document.querySelectorAll('.tab').forEach(b=>{
     b.onclick = ()=>{
-      if(activeTab==='add') captureCurrentFormDraft();
+      captureCurrentFormDraft();
       activeTab = b.dataset.tab; renderApp();
     };
   });
@@ -1488,9 +1495,10 @@ async function analyzeFoodPhoto(){
     const base64 = photoDataUrl.split(',')[1];
     const prompt = `你是一位營養師。請辨識這張照片裡的食物，估算這一份的營養成分。
 只回傳一個 JSON 物件，不要有其他文字或 Markdown 符號，格式如下：
-{"name":"食物名稱（繁體中文，簡短）","calories":數字,"protein":數字,"carb":數字,"fat":數字,"sodium":數字}
+{"name":"食物名稱（繁體中文，簡短）","calories":數字,"protein":數字,"carb":數字,"fat":數字,"sodium":數字,"isFood":true或false}
 calories 單位 kcal，protein/carb/fat 單位 g，sodium 單位 mg，全部只填數字不要單位文字。
-如果照片裡看不出是食物，name 填「無法辨識」，其他數字都填 0。`;
+如果照片裡的主體不是食物：isFood 填 false，name 填「這不是食物吧～是「猜測的東西名稱」吧」（把猜測的東西名稱換成你判斷這張照片實際拍的是什麼，例如貓、狗、人、風景），其他數字都填 0。
+如果是食物：isFood 填 true，照平常方式填寫。`;
     const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
@@ -1529,7 +1537,11 @@ calories 單位 kcal，protein/carb/fat 單位 g，sodium 單位 mg，全部只�
     if(result.carb!==undefined) document.getElementById('f_carb').value = Math.round(result.carb)||'';
     if(result.fat!==undefined) document.getElementById('f_fat').value = Math.round(result.fat)||'';
     if(result.sodium!==undefined) document.getElementById('f_sodium').value = Math.round(result.sodium)||'';
-    toast('AI 辨識完成,記得核對一下數字 ✨');
+    if(result.isFood===false){
+      toast('這張看起來不是食物,沒有帶入營養數字 🐱');
+    } else {
+      toast('AI 辨識完成,記得核對一下數字 ✨');
+    }
   }catch(e){
     console.error(e);
     toast('辨識失敗：'+e.message);
@@ -2019,22 +2031,31 @@ function plateSvg(name, s){
 /* ============ Board page (留言板) ============ */
 function renderBoardPage(){
   const page = document.getElementById('page');
-  boardPhotoDataUrl = null;
+  boardPhotoDataUrl = boardDraft.photo || null;
   page.innerHTML = `
     <div class="board-compose">
       <div class="board-compose-head">
         <span class="dot" style="background:${nameColor(currentProfile.name)}"></span>
         <span>${esc(currentProfile.name)}</span>
       </div>
-      <textarea id="post_text" placeholder="說點什麼幫大家打氣吧～（沒有照片也可以）" maxlength="500"></textarea>
-      <div class="photo-box small" id="postPhotoBox">
-        <div class="placeholder"><span class="ic">📷</span>加一張照片（選填）</div>
+      <textarea id="post_text" placeholder="說點什麼幫大家打氣吧～（沒有照片也可以）" maxlength="500">${esc(boardDraft.text||'')}</textarea>
+      <div class="photo-box small ${boardPhotoDataUrl?'has-img':''}" id="postPhotoBox">
+        ${boardPhotoDataUrl ? `<img src="${boardPhotoDataUrl}"><button class="photo-remove" id="removePostPhoto">✕</button>` : `<div class="placeholder"><span class="ic">📷</span>加一張照片（選填）</div>`}
       </div>
       <input type="file" id="post_photo" accept="image/*" style="display:none">
       <div class="submit-row"><button class="btn btn-primary" id="submitPost">發佈</button></div>
     </div>
     <div id="postFeed"></div>
   `;
+  const removePostBtn = document.getElementById('removePostPhoto');
+  if(removePostBtn) removePostBtn.onclick = (ev2)=>{
+    ev2.stopPropagation();
+    boardPhotoDataUrl = null;
+    boardDraft.photo = null;
+    const box = document.getElementById('postPhotoBox');
+    box.classList.remove('has-img');
+    box.innerHTML = `<div class="placeholder"><span class="ic">📷</span>加一張照片（選填）</div>`;
+  };
   const photoBox = document.getElementById('postPhotoBox');
   const fileInput = document.getElementById('post_photo');
   photoBox.onclick = ()=>fileInput.click();
@@ -2058,12 +2079,14 @@ function handlePostPhotoSelect(e){
       const ctx = canvas.getContext('2d');
       ctx.drawImage(img,0,0,canvas.width,canvas.height);
       boardPhotoDataUrl = canvas.toDataURL('image/jpeg', 0.65);
+      boardDraft.photo = boardPhotoDataUrl;
       const box = document.getElementById('postPhotoBox');
       box.classList.add('has-img');
       box.innerHTML = `<img src="${boardPhotoDataUrl}"><button class="photo-remove" id="removePostPhoto">✕</button>`;
       document.getElementById('removePostPhoto').onclick = (ev2)=>{
         ev2.stopPropagation();
         boardPhotoDataUrl = null;
+        boardDraft.photo = null;
         box.classList.remove('has-img');
         box.innerHTML = `<div class="placeholder"><span class="ic">📷</span>加一張照片（選填）</div>`;
       };
@@ -2089,6 +2112,7 @@ async function submitPost(){
     toast('已發佈 🎉');
     document.getElementById('post_text').value = '';
     boardPhotoDataUrl = null;
+    boardDraft = {};
     const box = document.getElementById('postPhotoBox');
     if(box){
       box.classList.remove('has-img');
