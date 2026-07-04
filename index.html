@@ -405,7 +405,7 @@ function getGeminiKey(){
 function setGeminiKey(key){
   try{ localStorage.setItem(GEMINI_KEY_STORAGE, key); }catch(e){}
 }
-const AI_RATE_LIMIT_MAX = 8; // 每個裝置每分鐘最多幾次
+const AI_RATE_LIMIT_MAX = 6; // 每個裝置每分鐘最多幾次
 const AI_RATE_LIMIT_WINDOW_MS = 60000;
 const AI_RATE_LIMIT_STORAGE = "aiCallLog_local";
 function checkAiRateLimit(){
