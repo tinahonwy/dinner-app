@@ -1497,8 +1497,8 @@ async function analyzeFoodPhoto(){
 只回傳一個 JSON 物件，不要有其他文字或 Markdown 符號，格式如下：
 {"name":"食物名稱（繁體中文，簡短）","calories":數字,"protein":數字,"carb":數字,"fat":數字,"sodium":數字,"isFood":true或false}
 calories 單位 kcal，protein/carb/fat 單位 g，sodium 單位 mg，全部只填數字不要單位文字。
-如果照片裡的主體不是食物：isFood 填 false，name 填「這不是食物吧～是「猜測的東西名稱」吧」（把猜測的東西名稱換成你判斷這張照片實際拍的是什麼，例如貓、狗、人、風景），其他數字都填 0。
-如果是食物：isFood 填 true，照平常方式填寫。`;
+如果照片裡的主體不是食物：isFood 填 false，name 填你判斷這張照片實際拍的是什麼的「簡短名稱」（例如：貓、狗、人、風景、桌子），不要加其他文字或標點，其他數字都填 0。
+如果是食物：isFood 填 true，照平常方式填寫食物名稱。`;
     const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
@@ -1528,18 +1528,29 @@ calories 單位 kcal，protein/carb/fat 單位 g，sodium 單位 mg，全部只�
     const result = JSON.parse(text);
 
     const dinnerField = document.getElementById('f_dinner');
-    if(dinnerField && !dinnerField.value.trim() && result.name){
-      dinnerField.value = result.name;
-      dinnerField.dataset.aiFilled = '1';
-    }
-    if(result.calories!==undefined) document.getElementById('f_cal').value = Math.round(result.calories)||'';
-    if(result.protein!==undefined) document.getElementById('f_protein').value = Math.round(result.protein)||'';
-    if(result.carb!==undefined) document.getElementById('f_carb').value = Math.round(result.carb)||'';
-    if(result.fat!==undefined) document.getElementById('f_fat').value = Math.round(result.fat)||'';
-    if(result.sodium!==undefined) document.getElementById('f_sodium').value = Math.round(result.sodium)||'';
     if(result.isFood===false){
-      toast('這張看起來不是食物,沒有帶入營養數字 🐱');
+      const guess = (result.name||'').trim() || '不明的東西';
+      const msg = `這不是食物，這是「${guess}」！！`;
+      if(dinnerField && !dinnerField.value.trim()){
+        dinnerField.value = msg;
+        dinnerField.dataset.aiFilled = '1';
+      }
+      document.getElementById('f_cal').value = '';
+      document.getElementById('f_protein').value = '';
+      document.getElementById('f_carb').value = '';
+      document.getElementById('f_fat').value = '';
+      document.getElementById('f_sodium').value = '';
+      toast(msg+' 🐱');
     } else {
+      if(dinnerField && !dinnerField.value.trim() && result.name){
+        dinnerField.value = result.name;
+        dinnerField.dataset.aiFilled = '1';
+      }
+      if(result.calories!==undefined) document.getElementById('f_cal').value = Math.round(result.calories)||'';
+      if(result.protein!==undefined) document.getElementById('f_protein').value = Math.round(result.protein)||'';
+      if(result.carb!==undefined) document.getElementById('f_carb').value = Math.round(result.carb)||'';
+      if(result.fat!==undefined) document.getElementById('f_fat').value = Math.round(result.fat)||'';
+      if(result.sodium!==undefined) document.getElementById('f_sodium').value = Math.round(result.sodium)||'';
       toast('AI 辨識完成,記得核對一下數字 ✨');
     }
   }catch(e){
