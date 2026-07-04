@@ -436,6 +436,30 @@ function updateAiRemainingDisplay(){
   if(!el){ return; }
   el.textContent = `一分鐘內最多可用 ${AI_RATE_LIMIT_MAX} 次,現在還剩 ${getAiRemainingCount()} 次`;
 }
+function removeLastAiCall(){
+  let log = [];
+  try{ log = JSON.parse(localStorage.getItem(AI_RATE_LIMIT_STORAGE) || '[]'); }catch(e){ log = []; }
+  log.pop();
+  try{ localStorage.setItem(AI_RATE_LIMIT_STORAGE, JSON.stringify(log)); }catch(e){}
+}
+function startAiCooldown(seconds){
+  let remaining = Math.ceil(seconds);
+  const tick = ()=>{
+    const btn = document.getElementById('aiAnalyzeBtn');
+    if(!btn) return; // 已離開這個畫面，停止倒數
+    if(remaining<=0){
+      btn.disabled = !photoDataUrl;
+      btn.textContent = '🤖 用 AI 辨識這張照片';
+      updateAiRemainingDisplay();
+      return;
+    }
+    btn.disabled = true;
+    btn.textContent = `🤖 Gemini 限流中,${remaining} 秒後可再試`;
+    remaining--;
+    setTimeout(tick, 1000);
+  };
+  tick();
+}
 const PALETTE = ["#D9663F","#3E6259","#C99A3E","#7D5BA6","#3E7CB1","#B5432F","#4C8C6B","#B65A82"];
 function nameColor(name){
   const u = allUsers.find(x=>x.name===name && x.color);
@@ -1562,6 +1586,14 @@ calories 單位 kcal，protein/carb/fat 單位 g，sodium 單位 mg，全部只�
     const data = await resp.json();
     if(!resp.ok){
       const msg = data.error && data.error.message ? data.error.message : '請求失敗';
+      if(resp.status===429){
+        removeLastAiCall();
+        const match = msg.match(/retry in ([\d.]+)\s*s/i);
+        const waitSec = match ? Math.ceil(parseFloat(match[1])) : 30;
+        toast(`Gemini 那邊限流了,不算進你的次數,請等 ${waitSec} 秒 ⏳`);
+        startAiCooldown(waitSec);
+        return;
+      }
       if(resp.status===400 || resp.status===403){
         toast('金鑰可能無效,請重新輸入');
         setGeminiKey('');
