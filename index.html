@@ -1586,10 +1586,27 @@ calories 單位 kcal，protein/carb/fat 單位 g，sodium 單位 mg，全部只�
     const data = await resp.json();
     if(!resp.ok){
       const msg = data.error && data.error.message ? data.error.message : '請求失敗';
-      if(resp.status===429){
+      const errStatus = (data.error && data.error.status) || '';
+      const isRateLimited = resp.status===429
+        || /RESOURCE_EXHAUSTED/i.test(errStatus)
+        || /quota|rate.?limit/i.test(msg);
+      if(isRateLimited){
         removeLastAiCall();
-        const match = msg.match(/retry in ([\d.]+)\s*s/i);
-        const waitSec = match ? Math.ceil(parseFloat(match[1])) : 30;
+        let waitSec = 30;
+        try{
+          if(data.error && Array.isArray(data.error.details)){
+            for(const d of data.error.details){
+              if(d.retryDelay){
+                const m = String(d.retryDelay).match(/([\d.]+)/);
+                if(m){ waitSec = Math.ceil(parseFloat(m[1])); break; }
+              }
+            }
+          }
+        }catch(e2){}
+        if(waitSec===30){
+          const m2 = msg.match(/retry.{0,10}?([\d.]+)\s*s/i);
+          if(m2) waitSec = Math.ceil(parseFloat(m2[1]));
+        }
         toast(`Gemini 那邊限流了,不算進你的次數,請等 ${waitSec} 秒 ⏳`);
         startAiCooldown(waitSec);
         return;
