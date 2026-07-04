@@ -186,6 +186,16 @@
   }
   .history-toggle:active{transform:scale(0.97);}
   .history-toggle:hover{background:var(--teal);color:#fff;}
+  .ai-toggle{
+    display:inline-flex;align-items:center;gap:6px;
+    background:var(--gold-soft);color:#8A6A1E;border:none;
+    font-size:14px;font-weight:600;border-radius:20px;
+    cursor:pointer;padding:9px 16px;margin-top:10px;
+  }
+  .ai-toggle:active{transform:scale(0.97);}
+  .ai-toggle:hover{background:var(--gold);color:#fff;}
+  .ai-toggle:disabled{opacity:.4;cursor:not-allowed;}
+  .ai-note{font-size:11px;color:var(--ink-soft);margin-top:6px;}
   .history-panel{
     margin-top:8px;max-height:220px;overflow-y:auto;border:1.5px solid var(--line);
     border-radius:12px;background:#FFFCF7;padding:4px;
@@ -386,6 +396,8 @@ const EXERCISE_TYPES = ["跑步","重訓","瑜伽","游泳","騎車","快走/散
 const WATER_QUICK = [200,350,500];
 const INVITE_CODE = "20001112";
 const DEFAULT_AVATAR = "./favicon.png";
+const GEMINI_API_KEY = "AQ.Ab8RN6LvlNOEdOdg-QsKTnoeXqEluC8LyUYZhjLIdGaWN_QaaA";
+const GEMINI_MODEL = "gemini-3.5-flash";
 const PALETTE = ["#D9663F","#3E6259","#C99A3E","#7D5BA6","#3E7CB1","#B5432F","#4C8C6B","#B65A82"];
 function nameColor(name){
   const u = allUsers.find(x=>x.name===name && x.color);
@@ -1121,6 +1133,8 @@ function renderMealForm(){
           ${photoDataUrl ? `<img src="${photoDataUrl}"><button class="photo-remove" id="removePhoto">✕</button>` : `<div class="placeholder"><span class="ic">📷</span>點一下拍照或選擇照片</div>`}
         </div>
         <input type="file" id="f_photo" accept="image/*" style="display:none">
+        <button type="button" class="ai-toggle" id="aiAnalyzeBtn" ${photoDataUrl?'':'disabled'}>🤖 用 AI 辨識這張照片</button>
+        <div class="ai-note">AI 估算僅供參考,請自行核對數字</div>
       </div>
       <div class="field compact"><label>備註（選填）</label><input type="text" id="f_note" placeholder="任何想記下的小事" value="${e? esc(e.note||'') : ''}"></div>
       <div class="submit-row"><button class="btn btn-primary" id="submitEntry">${e? '更新這筆紀錄' : '儲存這筆紀錄'}</button></div>
@@ -1136,8 +1150,11 @@ function renderMealForm(){
     photoDataUrl = null;
     photoBox.classList.remove('has-img');
     photoBox.innerHTML = `<div class="placeholder"><span class="ic">📷</span>點一下拍照或選擇照片</div>`;
+    const aiBtn = document.getElementById('aiAnalyzeBtn');
+    if(aiBtn) aiBtn.disabled = true;
   };
   document.getElementById('submitEntry').onclick = submitMeal;
+  document.getElementById('aiAnalyzeBtn').onclick = analyzeFoodPhoto;
 
   document.getElementById('mealHistoryToggle').onclick = ()=>{
     const panel = document.getElementById('mealHistoryPanel');
@@ -1327,11 +1344,71 @@ function handlePhotoSelect(e){
         photoDataUrl = null;
         box.classList.remove('has-img');
         box.innerHTML = `<div class="placeholder"><span class="ic">📷</span>點一下拍照或選擇照片</div>`;
+        const aiBtn = document.getElementById('aiAnalyzeBtn');
+        if(aiBtn) aiBtn.disabled = true;
       };
+      const aiBtn = document.getElementById('aiAnalyzeBtn');
+      if(aiBtn) aiBtn.disabled = false;
     };
     img.src = ev.target.result;
   };
   reader.readAsDataURL(file);
+}
+
+async function analyzeFoodPhoto(){
+  const btn = document.getElementById('aiAnalyzeBtn');
+  if(!photoDataUrl){ toast('請先選一張照片'); return; }
+  if(!GEMINI_API_KEY || GEMINI_API_KEY.indexOf('PUT_YOUR')===0){
+    toast('還沒有設定 Gemini API Key');
+    return;
+  }
+  const originalText = btn.textContent;
+  btn.disabled = true; btn.textContent = '🤖 辨識中…';
+  try{
+    const base64 = photoDataUrl.split(',')[1];
+    const prompt = `你是一位營養師。請辨識這張照片裡的食物，估算這一份的營養成分。
+只回傳一個 JSON 物件，不要有其他文字或 Markdown 符號，格式如下：
+{"name":"食物名稱（繁體中文，簡短）","calories":數字,"protein":數字,"carb":數字,"fat":數字,"sodium":數字}
+calories 單位 kcal，protein/carb/fat 單位 g，sodium 單位 mg，全部只填數字不要單位文字。
+如果照片裡看不出是食物，name 填「無法辨識」，其他數字都填 0。`;
+    const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': GEMINI_API_KEY },
+      body: JSON.stringify({
+        contents: [{
+          parts: [
+            { text: prompt },
+            { inline_data: { mime_type: 'image/jpeg', data: base64 } }
+          ]
+        }],
+        generationConfig: { responseMimeType: 'application/json' }
+      })
+    });
+    const data = await resp.json();
+    if(!resp.ok){
+      throw new Error(data.error && data.error.message ? data.error.message : '請求失敗');
+    }
+    const text = data.candidates && data.candidates[0] && data.candidates[0].content
+      && data.candidates[0].content.parts && data.candidates[0].content.parts[0]
+      && data.candidates[0].content.parts[0].text;
+    if(!text) throw new Error('沒有辨識結果');
+    const result = JSON.parse(text);
+
+    const dinnerField = document.getElementById('f_dinner');
+    if(dinnerField && !dinnerField.value.trim() && result.name){
+      dinnerField.value = result.name;
+    }
+    if(result.calories!==undefined) document.getElementById('f_cal').value = Math.round(result.calories)||'';
+    if(result.protein!==undefined) document.getElementById('f_protein').value = Math.round(result.protein)||'';
+    if(result.carb!==undefined) document.getElementById('f_carb').value = Math.round(result.carb)||'';
+    if(result.fat!==undefined) document.getElementById('f_fat').value = Math.round(result.fat)||'';
+    if(result.sodium!==undefined) document.getElementById('f_sodium').value = Math.round(result.sodium)||'';
+    toast('AI 辨識完成,記得核對一下數字 ✨');
+  }catch(e){
+    console.error(e);
+    toast('辨識失敗：'+e.message);
+  }
+  btn.disabled = false; btn.textContent = originalText;
 }
 
 async function submitMeal(){
