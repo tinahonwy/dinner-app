@@ -1226,6 +1226,7 @@ function renderMealForm(){
   if(changeKeyLink) changeKeyLink.onclick = (ev)=>{ ev.preventDefault(); openGeminiKeyModal(); };
 
   document.getElementById('f_dinner').oninput = (ev)=>{ ev.target.dataset.aiFilled = ''; };
+  document.getElementById('f_note').oninput = (ev)=>{ ev.target.dataset.aiFilled = ''; };
   document.getElementById('mealHistoryToggle').onclick = ()=>{
     const panel = document.getElementById('mealHistoryPanel');
     const opening = panel.classList.contains('hidden');
@@ -1406,6 +1407,11 @@ function clearMealNutritionFields(){
     dinnerField.value = '';
     dinnerField.dataset.aiFilled = '';
   }
+  const noteField = document.getElementById('f_note');
+  if(noteField && noteField.dataset.aiFilled==='1'){
+    noteField.value = '';
+    noteField.dataset.aiFilled = '';
+  }
 }
 
 function handlePhotoSelect(e){
@@ -1493,12 +1499,12 @@ async function analyzeFoodPhoto(){
   btn.disabled = true; btn.textContent = '🤖 辨識中…';
   try{
     const base64 = photoDataUrl.split(',')[1];
-    const prompt = `你是一位營養師。請辨識這張照片裡的食物，估算這一份的營養成分。
+    const prompt = `你是一位營養師。請辨識這張照片裡的食物，估算這一份的營養成分，並給一句簡短評價。
 只回傳一個 JSON 物件，不要有其他文字或 Markdown 符號，格式如下：
-{"name":"食物名稱（繁體中文，簡短）","calories":數字,"protein":數字,"carb":數字,"fat":數字,"sodium":數字,"isFood":true或false}
+{"name":"食物名稱（繁體中文，簡短）","calories":數字,"protein":數字,"carb":數字,"fat":數字,"sodium":數字,"isFood":true或false,"comment":"對這餐的簡短評價"}
 calories 單位 kcal，protein/carb/fat 單位 g，sodium 單位 mg，全部只填數字不要單位文字。
-如果照片裡的主體不是食物：isFood 填 false，name 填你判斷這張照片實際拍的是什麼的「簡短名稱」（例如：貓、狗、人、風景、桌子），不要加其他文字或標點，其他數字都填 0。
-如果是食物：isFood 填 true，照平常方式填寫食物名稱。`;
+如果照片裡的主體不是食物：isFood 填 false，name 填你判斷這張照片實際拍的是什麼的「簡短名稱」（例如：貓、狗、人、風景、桌子），不要加其他文字或標點，其他數字都填 0，comment 填空字串。
+如果是食物：isFood 填 true，照平常方式填寫食物名稱。comment 是你以營養師角度對這餐的簡短評價或建議（例如熱量偏高、蛋白質不錯、可以多加點蔬菜之類），用繁體中文，語氣自然、可以帶點鼓勵或提醒，長度限制在 50 字以內，不要加引號。`;
     const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
@@ -1540,7 +1546,7 @@ calories 單位 kcal，protein/carb/fat 單位 g，sodium 單位 mg，全部只�
       document.getElementById('f_carb').value = '';
       document.getElementById('f_fat').value = '';
       document.getElementById('f_sodium').value = '';
-      toast(msg+' 🐱');
+      toast(msg+' 🤔');
     } else {
       if(dinnerField && !dinnerField.value.trim() && result.name){
         dinnerField.value = result.name;
@@ -1551,6 +1557,12 @@ calories 單位 kcal，protein/carb/fat 單位 g，sodium 單位 mg，全部只�
       if(result.carb!==undefined) document.getElementById('f_carb').value = Math.round(result.carb)||'';
       if(result.fat!==undefined) document.getElementById('f_fat').value = Math.round(result.fat)||'';
       if(result.sodium!==undefined) document.getElementById('f_sodium').value = Math.round(result.sodium)||'';
+      const noteField = document.getElementById('f_note');
+      if(noteField && !noteField.value.trim() && result.comment){
+        let comment = String(result.comment).trim().slice(0,50);
+        noteField.value = `AI：${comment}`;
+        noteField.dataset.aiFilled = '1';
+      }
       toast('AI 辨識完成,記得核對一下數字 ✨');
     }
   }catch(e){
