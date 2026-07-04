@@ -405,6 +405,37 @@ function getGeminiKey(){
 function setGeminiKey(key){
   try{ localStorage.setItem(GEMINI_KEY_STORAGE, key); }catch(e){}
 }
+const AI_RATE_LIMIT_MAX = 8; // 每個裝置每分鐘最多幾次
+const AI_RATE_LIMIT_WINDOW_MS = 60000;
+const AI_RATE_LIMIT_STORAGE = "aiCallLog_local";
+function checkAiRateLimit(){
+  let log = [];
+  try{ log = JSON.parse(localStorage.getItem(AI_RATE_LIMIT_STORAGE) || '[]'); }catch(e){ log = []; }
+  const now = Date.now();
+  log = log.filter(t => now - t < AI_RATE_LIMIT_WINDOW_MS);
+  if(log.length >= AI_RATE_LIMIT_MAX){
+    const waitSec = Math.ceil((AI_RATE_LIMIT_WINDOW_MS - (now - log[0])) / 1000);
+    return { allowed:false, waitSec: Math.max(waitSec,1) };
+  }
+  return { allowed:true, log };
+}
+function recordAiCall(log){
+  const now = Date.now();
+  const updated = (log||[]).concat([now]);
+  try{ localStorage.setItem(AI_RATE_LIMIT_STORAGE, JSON.stringify(updated)); }catch(e){}
+}
+function getAiRemainingCount(){
+  let log = [];
+  try{ log = JSON.parse(localStorage.getItem(AI_RATE_LIMIT_STORAGE) || '[]'); }catch(e){ log = []; }
+  const now = Date.now();
+  log = log.filter(t => now - t < AI_RATE_LIMIT_WINDOW_MS);
+  return Math.max(0, AI_RATE_LIMIT_MAX - log.length);
+}
+function updateAiRemainingDisplay(){
+  const el = document.getElementById('aiRemainingText');
+  if(!el){ return; }
+  el.textContent = `一分鐘內最多可用 ${AI_RATE_LIMIT_MAX} 次,現在還剩 ${getAiRemainingCount()} 次`;
+}
 const PALETTE = ["#D9663F","#3E6259","#C99A3E","#7D5BA6","#3E7CB1","#B5432F","#4C8C6B","#B65A82"];
 function nameColor(name){
   const u = allUsers.find(x=>x.name===name && x.color);
@@ -1201,6 +1232,7 @@ function renderMealForm(){
         <input type="file" id="f_photo" accept="image/*" style="display:none">
         <button type="button" class="ai-toggle" id="aiAnalyzeBtn" ${photoDataUrl?'':'disabled'}>🤖 用 AI 辨識這張照片</button>
         <div class="ai-note">AI 估算僅供參考,請自行核對數字 · <a href="#" id="changeGeminiKeyLink" style="color:var(--ink-soft);text-decoration:underline;">設定/更換金鑰</a></div>
+        <div class="ai-note" id="aiRemainingText"></div>
       </div>
       <div class="field compact"><label>備註（選填）</label><input type="text" id="f_note" placeholder="任何想記下的小事" value="${esc(d.note||'')}"></div>
       <div class="submit-row"><button class="btn btn-primary" id="submitEntry">${e? '更新這筆紀錄' : '儲存這筆紀錄'}</button></div>
@@ -1222,6 +1254,7 @@ function renderMealForm(){
   };
   document.getElementById('submitEntry').onclick = submitMeal;
   document.getElementById('aiAnalyzeBtn').onclick = analyzeFoodPhoto;
+  updateAiRemainingDisplay();
   const changeKeyLink = document.getElementById('changeGeminiKeyLink');
   if(changeKeyLink) changeKeyLink.onclick = (ev)=>{ ev.preventDefault(); openGeminiKeyModal(); };
 
@@ -1495,6 +1528,14 @@ async function analyzeFoodPhoto(){
     openGeminiKeyModal(()=>analyzeFoodPhoto());
     return;
   }
+  const rateCheck = checkAiRateLimit();
+  if(!rateCheck.allowed){
+    toast(`辨識太頻繁了,請等 ${rateCheck.waitSec} 秒再試一次 ⏳`);
+    updateAiRemainingDisplay();
+    return;
+  }
+  recordAiCall(rateCheck.log);
+  updateAiRemainingDisplay();
   const originalText = btn.textContent;
   btn.disabled = true; btn.textContent = '🤖 辨識中…';
   try{
@@ -1570,6 +1611,7 @@ calories 單位 kcal，protein/carb/fat 單位 g，sodium 單位 mg，全部只�
     toast('辨識失敗：'+e.message);
   }
   btn.disabled = false; btn.textContent = originalText;
+  updateAiRemainingDisplay();
 }
 
 async function submitMeal(){
