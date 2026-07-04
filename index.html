@@ -396,8 +396,15 @@ const EXERCISE_TYPES = ["跑步","重訓","瑜伽","游泳","騎車","快走/散
 const WATER_QUICK = [200,350,500];
 const INVITE_CODE = "20001112";
 const DEFAULT_AVATAR = "./favicon.png";
-const GEMINI_API_KEY = "AQ.Ab8RN6LvlNOEdOdg-QsKTnoeXqEluC8LyUYZhjLIdGaWN_QaaA";
 const GEMINI_MODEL = "gemini-3.5-flash";
+const GEMINI_KEY_STORAGE = "geminiApiKey_local";
+function getGeminiKey(){
+  try{ return localStorage.getItem(GEMINI_KEY_STORAGE) || ''; }
+  catch(e){ return ''; }
+}
+function setGeminiKey(key){
+  try{ localStorage.setItem(GEMINI_KEY_STORAGE, key); }catch(e){}
+}
 const PALETTE = ["#D9663F","#3E6259","#C99A3E","#7D5BA6","#3E7CB1","#B5432F","#4C8C6B","#B65A82"];
 function nameColor(name){
   const u = allUsers.find(x=>x.name===name && x.color);
@@ -1134,7 +1141,7 @@ function renderMealForm(){
         </div>
         <input type="file" id="f_photo" accept="image/*" style="display:none">
         <button type="button" class="ai-toggle" id="aiAnalyzeBtn" ${photoDataUrl?'':'disabled'}>🤖 用 AI 辨識這張照片</button>
-        <div class="ai-note">AI 估算僅供參考,請自行核對數字</div>
+        <div class="ai-note">AI 估算僅供參考,請自行核對數字 · <a href="#" id="changeGeminiKeyLink" style="color:var(--ink-soft);text-decoration:underline;">設定/更換金鑰</a></div>
       </div>
       <div class="field compact"><label>備註（選填）</label><input type="text" id="f_note" placeholder="任何想記下的小事" value="${e? esc(e.note||'') : ''}"></div>
       <div class="submit-row"><button class="btn btn-primary" id="submitEntry">${e? '更新這筆紀錄' : '儲存這筆紀錄'}</button></div>
@@ -1155,6 +1162,8 @@ function renderMealForm(){
   };
   document.getElementById('submitEntry').onclick = submitMeal;
   document.getElementById('aiAnalyzeBtn').onclick = analyzeFoodPhoto;
+  const changeKeyLink = document.getElementById('changeGeminiKeyLink');
+  if(changeKeyLink) changeKeyLink.onclick = (ev)=>{ ev.preventDefault(); openGeminiKeyModal(); };
 
   document.getElementById('mealHistoryToggle').onclick = ()=>{
     const panel = document.getElementById('mealHistoryPanel');
@@ -1355,11 +1364,48 @@ function handlePhotoSelect(e){
   reader.readAsDataURL(file);
 }
 
+function openGeminiKeyModal(onSaved){
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'geminiKeyModalOverlay';
+  overlay.innerHTML = `
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3 class="display">設定 AI 辨識金鑰</h3>
+        <button class="modal-close" id="closeGeminiKeyModal">✕</button>
+      </div>
+      <p style="font-size:13px;color:var(--ink-soft);line-height:1.6;margin:0 0 14px;">
+        用 AI 辨識照片需要一組 Gemini API Key。這組金鑰只會存在<b>你這台裝置</b>裡,不會上傳、不會出現在任何公開的地方。
+        還沒有的話可以去
+        <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a>
+        免費申請一組,或請幫你架站的人直接把金鑰傳給你。
+      </p>
+      <div class="field">
+        <label>Gemini API Key</label>
+        <input type="text" id="geminiKeyInput" placeholder="貼上金鑰">
+      </div>
+      <div class="submit-row"><button class="btn btn-primary" id="saveGeminiKeyBtn">儲存</button></div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  document.getElementById('closeGeminiKeyModal').onclick = ()=>overlay.remove();
+  overlay.onclick = (ev)=>{ if(ev.target===overlay) overlay.remove(); };
+  document.getElementById('saveGeminiKeyBtn').onclick = ()=>{
+    const key = document.getElementById('geminiKeyInput').value.trim();
+    if(!key){ toast('請貼上金鑰'); return; }
+    setGeminiKey(key);
+    overlay.remove();
+    toast('金鑰已儲存在這台裝置上 ✨');
+    if(onSaved) onSaved();
+  };
+}
+
 async function analyzeFoodPhoto(){
   const btn = document.getElementById('aiAnalyzeBtn');
   if(!photoDataUrl){ toast('請先選一張照片'); return; }
-  if(!GEMINI_API_KEY || GEMINI_API_KEY.indexOf('PUT_YOUR')===0){
-    toast('還沒有設定 Gemini API Key');
+  let apiKey = getGeminiKey();
+  if(!apiKey){
+    openGeminiKeyModal(()=>analyzeFoodPhoto());
     return;
   }
   const originalText = btn.textContent;
@@ -1373,7 +1419,7 @@ calories 單位 kcal，protein/carb/fat 單位 g，sodium 單位 mg，全部只�
 如果照片裡看不出是食物，name 填「無法辨識」，其他數字都填 0。`;
     const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': GEMINI_API_KEY },
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
       body: JSON.stringify({
         contents: [{
           parts: [
@@ -1386,7 +1432,12 @@ calories 單位 kcal，protein/carb/fat 單位 g，sodium 單位 mg，全部只�
     });
     const data = await resp.json();
     if(!resp.ok){
-      throw new Error(data.error && data.error.message ? data.error.message : '請求失敗');
+      const msg = data.error && data.error.message ? data.error.message : '請求失敗';
+      if(resp.status===400 || resp.status===403){
+        toast('金鑰可能無效,請重新輸入');
+        setGeminiKey('');
+      }
+      throw new Error(msg);
     }
     const text = data.candidates && data.candidates[0] && data.candidates[0].content
       && data.candidates[0].content.parts && data.candidates[0].content.parts[0]
