@@ -1159,12 +1159,14 @@ function renderMealForm(){
     photoBox.innerHTML = `<div class="placeholder"><span class="ic">📷</span>點一下拍照或選擇照片</div>`;
     const aiBtn = document.getElementById('aiAnalyzeBtn');
     if(aiBtn) aiBtn.disabled = true;
+    clearMealNutritionFields();
   };
   document.getElementById('submitEntry').onclick = submitMeal;
   document.getElementById('aiAnalyzeBtn').onclick = analyzeFoodPhoto;
   const changeKeyLink = document.getElementById('changeGeminiKeyLink');
   if(changeKeyLink) changeKeyLink.onclick = (ev)=>{ ev.preventDefault(); openGeminiKeyModal(); };
 
+  document.getElementById('f_dinner').oninput = (ev)=>{ ev.target.dataset.aiFilled = ''; };
   document.getElementById('mealHistoryToggle').onclick = ()=>{
     const panel = document.getElementById('mealHistoryPanel');
     const opening = panel.classList.contains('hidden');
@@ -1330,6 +1332,18 @@ function renderExerciseHistoryList(){
   `).join('');
 }
 
+function clearMealNutritionFields(){
+  ['f_cal','f_protein','f_carb','f_fat','f_fiber','f_sugar','f_sodium'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.value = '';
+  });
+  const dinnerField = document.getElementById('f_dinner');
+  if(dinnerField && dinnerField.dataset.aiFilled==='1'){
+    dinnerField.value = '';
+    dinnerField.dataset.aiFilled = '';
+  }
+}
+
 function handlePhotoSelect(e){
   const file = e.target.files[0];
   if(!file) return;
@@ -1355,6 +1369,7 @@ function handlePhotoSelect(e){
         box.innerHTML = `<div class="placeholder"><span class="ic">📷</span>點一下拍照或選擇照片</div>`;
         const aiBtn = document.getElementById('aiAnalyzeBtn');
         if(aiBtn) aiBtn.disabled = true;
+        clearMealNutritionFields();
       };
       const aiBtn = document.getElementById('aiAnalyzeBtn');
       if(aiBtn) aiBtn.disabled = false;
@@ -1448,6 +1463,7 @@ calories 單位 kcal，protein/carb/fat 單位 g，sodium 單位 mg，全部只�
     const dinnerField = document.getElementById('f_dinner');
     if(dinnerField && !dinnerField.value.trim() && result.name){
       dinnerField.value = result.name;
+      dinnerField.dataset.aiFilled = '1';
     }
     if(result.calories!==undefined) document.getElementById('f_cal').value = Math.round(result.calories)||'';
     if(result.protein!==undefined) document.getElementById('f_protein').value = Math.round(result.protein)||'';
