@@ -1260,6 +1260,7 @@ function renderMealForm(){
         </div>
         <input type="file" id="f_photo" accept="image/*" style="display:none">
         <button type="button" class="ai-toggle" id="aiAnalyzeBtn" ${photoDataUrl?'':'disabled'}>🤖 用 AI 辨識這張照片</button>
+        <div class="ai-note">💡 先在「內容」打好菜名再辨識,AI 估算會更準</div>
         <div class="ai-note">AI 估算僅供參考,請自行核對數字 · <a href="#" id="changeGeminiKeyLink" style="color:var(--ink-soft);text-decoration:underline;">設定/更換金鑰</a></div>
         <div class="ai-note" id="aiRemainingText"></div>
       </div>
@@ -1579,6 +1580,15 @@ async function analyzeFoodPhoto(){
     openGeminiKeyModal(()=>analyzeFoodPhoto());
     return;
   }
+  const dinnerFieldEarly = document.getElementById('f_dinner');
+  if(dinnerFieldEarly && !dinnerFieldEarly.value.trim()){
+    const wantsToType = confirm('要先自己輸入菜名嗎？\n\n菜名越明確,AI 估算的營養素會越準。\n\n按「確定」我先自己打菜名\n按「取消」讓 AI 自動判斷菜名');
+    if(wantsToType){
+      dinnerFieldEarly.focus();
+      toast('打好菜名後,再按一次「用 AI 辨識」📝');
+      return;
+    }
+  }
   const rateCheck = checkAiRateLimit();
   if(!rateCheck.allowed){
     toast(`辨識太頻繁了,請等 ${rateCheck.waitSec} 秒再試一次 ⏳`);
@@ -1591,7 +1601,15 @@ async function analyzeFoodPhoto(){
   btn.disabled = true; btn.textContent = '🤖 辨識中…';
   try{
     const base64 = photoDataUrl.split(',')[1];
-    const prompt = `你是一位營養師。請辨識這張照片裡的食物，估算這一份的營養成分，並給一句簡短評價。
+    const dinnerFieldEl = document.getElementById('f_dinner');
+    const userProvidedName = dinnerFieldEl ? dinnerFieldEl.value.trim() : '';
+    const prompt = userProvidedName
+      ? `你是一位營養師。使用者說照片裡這道菜是「${userProvidedName}」。請根據這個名稱、以及照片裡看到的份量，估算這一份的營養成分，並給一句簡短評價。
+只回傳一個 JSON 物件，不要有其他文字或 Markdown 符號，格式如下：
+{"calories":數字,"protein":數字,"carb":數字,"fat":數字,"sodium":數字,"comment":"對這餐的簡短評價"}
+calories 單位 kcal，protein/carb/fat 單位 g，sodium 單位 mg，全部只填數字不要單位文字。
+comment 是你以營養師角度對這餐的簡短評價或建議，用繁體中文，語氣自然、可以帶點鼓勵或提醒，長度限制在 50 字以內，不要加引號。`
+      : `你是一位營養師。請辨識這張照片裡的食物，估算這一份的營養成分，並給一句簡短評價。
 只回傳一個 JSON 物件，不要有其他文字或 Markdown 符號，格式如下：
 {"name":"食物名稱（繁體中文，簡短）","calories":數字,"protein":數字,"carb":數字,"fat":數字,"sodium":數字,"isFood":true或false,"comment":"對這餐的簡短評價"}
 calories 單位 kcal，protein/carb/fat 單位 g，sodium 單位 mg，全部只填數字不要單位文字。
@@ -1686,7 +1704,7 @@ calories 單位 kcal，protein/carb/fat 單位 g，sodium 單位 mg，全部只�
         noteField.value = `AI：${comment}`;
         noteField.dataset.aiFilled = '1';
       }
-      toast('AI 辨識完成,記得核對一下數字 ✨');
+      toast(userProvidedName ? `已根據「${userProvidedName}」估算營養,記得核對一下數字 ✨` : 'AI 辨識完成,記得核對一下數字 ✨');
     }
   }catch(e){
     console.error(e);
