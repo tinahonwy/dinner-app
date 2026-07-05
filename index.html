@@ -219,6 +219,11 @@
   .photo-remove{position:absolute;top:8px;right:8px;background:rgba(43,35,32,.65);color:#fff;border:none;border-radius:50%;width:26px;height:26px;cursor:pointer;font-size:14px;}
 
   .submit-row{margin-top:16px;}
+  .clear-all-btn{
+    display:block;width:100%;background:none;border:none;color:#B5432F;
+    font-size:12.5px;text-decoration:underline;cursor:pointer;padding:10px 0 2px;
+  }
+  .clear-all-btn:hover{color:var(--err);}
   .toast{position:fixed;bottom:calc(96px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:30px;font-size:13.5px;box-shadow:var(--shadow);z-index:100;opacity:0;pointer-events:none;transition:opacity .25s, transform .25s;}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(-6px);}
 
@@ -1260,6 +1265,7 @@ function renderMealForm(){
       </div>
       <div class="field compact"><label>備註（選填）</label><input type="text" id="f_note" placeholder="任何想記下的小事" value="${esc(d.note||'')}"></div>
       <div class="submit-row"><button class="btn btn-primary" id="submitEntry">${e? '更新這筆紀錄' : '儲存這筆紀錄'}</button></div>
+      <button type="button" class="clear-all-btn" id="clearMealBtn">🗑 清除全部</button>
     </div>
   `;
   const photoBox = document.getElementById('photoBox');
@@ -1277,6 +1283,14 @@ function renderMealForm(){
     clearMealNutritionFields();
   };
   document.getElementById('submitEntry').onclick = submitMeal;
+  document.getElementById('clearMealBtn').onclick = ()=>{
+    if(!confirm('確定要清除剛剛填寫的內容嗎？（包含照片）')) return;
+    editingEntry = null;
+    mealDraft = {};
+    photoDataUrl = null;
+    renderMealForm();
+    toast('已清除');
+  };
   document.getElementById('aiAnalyzeBtn').onclick = analyzeFoodPhoto;
   updateAiRemainingDisplay();
   const changeKeyLink = document.getElementById('changeGeminiKeyLink');
