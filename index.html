@@ -1582,7 +1582,7 @@ async function analyzeFoodPhoto(){
   }
   const dinnerFieldEarly = document.getElementById('f_dinner');
   if(dinnerFieldEarly && !dinnerFieldEarly.value.trim()){
-    const typedName = prompt('直接填寫菜名（增加AI辨識度）\n什麼都不填按確定的話，可讓AI自己判定');
+    const typedName = prompt('直接填寫菜名（增加AI辨識度）\n什麼都不填按「確定」的話，可讓AI自己判定');
     if(typedName===null){ return; } // 按取消，放棄這次辨識
     if(typedName.trim()){
       dinnerFieldEarly.value = typedName.trim();
