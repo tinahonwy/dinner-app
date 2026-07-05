@@ -1582,11 +1582,10 @@ async function analyzeFoodPhoto(){
   }
   const dinnerFieldEarly = document.getElementById('f_dinner');
   if(dinnerFieldEarly && !dinnerFieldEarly.value.trim()){
-    const wantsToType = confirm('要先自己輸入菜名嗎？\n\n菜名越明確,AI 估算的營養素會越準。\n\n按「確定」我先自己打菜名\n按「取消」讓 AI 自動判斷菜名');
-    if(wantsToType){
-      dinnerFieldEarly.focus();
-      toast('打好菜名後,再按一次「用 AI 辨識」📝');
-      return;
+    const typedName = prompt('直接填寫菜名（增加AI辨識度）\n留空按確定，則由AI自己判定');
+    if(typedName===null){ return; } // 按取消，放棄這次辨識
+    if(typedName.trim()){
+      dinnerFieldEarly.value = typedName.trim();
     }
   }
   const rateCheck = checkAiRateLimit();
