@@ -396,7 +396,7 @@ const EXERCISE_TYPES = ["跑步","重訓","瑜伽","游泳","騎車","快走/散
 const WATER_QUICK = [200,350,500];
 const INVITE_CODE = "20001112";
 const DEFAULT_AVATAR = "./favicon.png";
-const GEMINI_MODEL = "gemini-2.5-flash-lite";
+const GEMINI_MODEL = "gemini-3.5-flash";
 const GEMINI_KEY_STORAGE = "geminiApiKey_local";
 function getGeminiKey(){
   try{ return localStorage.getItem(GEMINI_KEY_STORAGE) || ''; }
@@ -1544,6 +1544,19 @@ function openGeminiKeyModal(onSaved){
   };
 }
 
+function parseAiJson(text){
+  let cleaned = (text||'').trim();
+  cleaned = cleaned.replace(/^```json\s*/i, '').replace(/^```\s*/, '').replace(/```\s*$/, '').trim();
+  try{
+    return JSON.parse(cleaned);
+  }catch(e){}
+  const match = cleaned.match(/\{[\s\S]*\}/);
+  if(match){
+    try{ return JSON.parse(match[0]); }catch(e2){}
+  }
+  throw new Error('AI 回傳的格式無法解析,換一張照片或稍後再試');
+}
+
 async function analyzeFoodPhoto(){
   const btn = document.getElementById('aiAnalyzeBtn');
   if(!photoDataUrl){ toast('請先選一張照片'); return; }
@@ -1590,9 +1603,13 @@ calories 單位 kcal，protein/carb/fat 單位 g，sodium 單位 mg，全部只�
       const isRateLimited = resp.status===429
         || /RESOURCE_EXHAUSTED/i.test(errStatus)
         || /quota|rate.?limit/i.test(msg);
-      if(isRateLimited){
+      const isOverloaded = resp.status===503
+        || /UNAVAILABLE/i.test(errStatus)
+        || /overloaded|unavailable|try again later/i.test(msg);
+      if(isRateLimited || isOverloaded){
         removeLastAiCall();
-        let waitSec = 30;
+        updateAiRemainingDisplay();
+        let waitSec = isOverloaded ? 15 : 30;
         try{
           if(data.error && Array.isArray(data.error.details)){
             for(const d of data.error.details){
@@ -1603,11 +1620,13 @@ calories 單位 kcal，protein/carb/fat 單位 g，sodium 單位 mg，全部只�
             }
           }
         }catch(e2){}
-        if(waitSec===30){
+        if(!isOverloaded && waitSec===30){
           const m2 = msg.match(/retry.{0,10}?([\d.]+)\s*s/i);
           if(m2) waitSec = Math.ceil(parseFloat(m2[1]));
         }
-        toast(`Gemini 那邊限流了,不算進你的次數,請等 ${waitSec} 秒 ⏳`);
+        toast(isOverloaded
+          ? `Gemini 模型現在比較忙,不算進你的次數,請等 ${waitSec} 秒 🙏`
+          : `Gemini 那邊限流了,不算進你的次數,請等 ${waitSec} 秒 ⏳`);
         startAiCooldown(waitSec);
         return;
       }
@@ -1621,7 +1640,7 @@ calories 單位 kcal，protein/carb/fat 單位 g，sodium 單位 mg，全部只�
       && data.candidates[0].content.parts && data.candidates[0].content.parts[0]
       && data.candidates[0].content.parts[0].text;
     if(!text) throw new Error('沒有辨識結果');
-    const result = JSON.parse(text);
+    const result = parseAiJson(text);
 
     const dinnerField = document.getElementById('f_dinner');
     if(result.isFood===false){
